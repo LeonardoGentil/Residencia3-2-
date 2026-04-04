@@ -1,6 +1,6 @@
 # Filazero MCP Server
 
-MCP Server que expõe a API REST da [Filazero](https://filazero.net) como tools padronizadas para agentes de IA (Claude, GPT, etc.), permitindo realizar agendamentos completos via conversa natural.
+
 
 Desenvolvido para a Residência em Software III — Universidade Tiradentes (UNIT) 2026.
 
