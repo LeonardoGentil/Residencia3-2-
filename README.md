@@ -66,14 +66,16 @@ Edite o arquivo de configuração do Claude Desktop (`claude_desktop_config.json
 {
   "mcpServers": {
     "filazero": {
-      "command": "node",
-      "args": ["/caminho/absoluto/para/filazero-mcp/dist/index.js"],
-      "env": {
-        "FILAZERO_API_URL": "https://api.staging.filazero.net",
-        "FILAZERO_APP_ORIGIN": "https://app.filazero.net",
-        "LOG_LEVEL": "info"
+      "transport": {
+        "type": "http",
+        "url": "http://localhost:3000"
       }
     }
+  },
+  "preferences": {
+    "coworkWebSearchEnabled": true,
+    "coworkScheduledTasksEnabled": false,
+    "ccdScheduledTasksEnabled": false
   }
 }
 ```
