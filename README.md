@@ -24,6 +24,10 @@ cp .env.example .env
 
 # 3. Suba os containers
 docker compose up --build
+
+#4. Roda o MCP insepctor
+npx @modelcontextprotocol/inspector http://localhost:3000
+
 ```
 
 O servidor MCP ficará acessível em `http://localhost:3000` (direto) ou `http://localhost:80` (via Nginx).
