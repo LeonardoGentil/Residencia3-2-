@@ -28,7 +28,7 @@ export async function getAvailableDates(input: GetAvailableDatesInput): Promise<
   const cacheKey = `available-dates:${input.slug}:${input.serviceId}:${input.year}-${input.month}`;
   const start = Date.now();
 
-  const cached = cache.get<string[]>(cacheKey);
+  const cached = cache.get<Array<Record<string, unknown>>>(cacheKey);
   if (cached) {
     logger.info('Tool executed successfully', { tool: TOOL, duration_ms: Date.now() - start, cached: true });
     if (cached.length === 0) {
@@ -39,12 +39,12 @@ export async function getAvailableDates(input: GetAvailableDatesInput): Promise<
 
   try {
     const raw = (await fetchAvailableDates(input.slug, input.serviceId, input.year, input.month)) as
-      | { data?: Array<{ date: string }> }
-      | Array<{ date: string }>;
+      | { data?: Array<Record<string, unknown>> }
+      | Array<Record<string, unknown>>;
 
-    const days: Array<{ date: string }> = Array.isArray(raw)
+    const days: Array<Record<string, unknown>> = Array.isArray(raw)
       ? raw
-      : (raw as { data?: Array<{ date: string }> }).data ?? [];
+      : (raw as { data?: Array<Record<string, unknown>> }).data ?? [];
 
     if (days.length === 0) {
       cache.set(cacheKey, [], TTL.availableDates);
@@ -52,7 +52,12 @@ export async function getAvailableDates(input: GetAvailableDatesInput): Promise<
       return { content: [{ type: 'text', text: 'Nenhuma vaga disponível neste mês. Tente outro mês.' }] };
     }
 
-    const result = days.map((d) => utcToSaoPaulo(d.date));
+    const result = days.map((d) => {
+      const formatted: Record<string, unknown> = { date: utcToSaoPaulo(String(d['date'] ?? '')) };
+      if (d['locationId'] !== undefined) formatted['locationId'] = d['locationId'];
+      if (d['providerId'] !== undefined) formatted['providerId'] = d['providerId'];
+      return formatted;
+    });
     cache.set(cacheKey, result, TTL.availableDates);
     logger.info('Tool executed successfully', { tool: TOOL, duration_ms: Date.now() - start, cached: false });
 

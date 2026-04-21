@@ -17,6 +17,8 @@ export interface Company {
   slug: string;
   name: string;
   description: string;
+  locationId?: number;
+  locations?: Array<{ id: number; name?: string }>;
 }
 
 // ─── Service ──────────────────────────────────────────────────────────────────
@@ -26,6 +28,8 @@ export interface Service {
   abstractServiceId: number;
   name: string;
   description: string;
+  locationId?: number;
+  locations?: Array<{ id: number; name?: string }>;
 }
 
 // ─── Available dates ──────────────────────────────────────────────────────────

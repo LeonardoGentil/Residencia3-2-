@@ -21,12 +21,16 @@ async function listCompanies(_input) {
         const companies = Array.isArray(raw)
             ? raw
             : raw.data ?? [];
-        const result = companies.map((c) => ({
-            id: c.id,
-            slug: c.slug,
-            name: c.name,
-            description: c.description,
-        }));
+        const result = companies.map((c) => {
+            const locationId = c.locationId ?? c.locations?.[0]?.id;
+            return {
+                id: c.id,
+                slug: c.slug,
+                name: c.name,
+                description: c.description,
+                ...(locationId !== undefined ? { locationId } : {}),
+            };
+        });
         index_js_1.cache.set(cacheKey, result, index_js_1.TTL.companies);
         index_js_2.logger.info('Tool executed successfully', { tool: TOOL, duration_ms: Date.now() - start, cached: false });
         return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };

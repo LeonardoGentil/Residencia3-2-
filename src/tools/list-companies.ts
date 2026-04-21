@@ -25,12 +25,16 @@ export async function listCompanies(_input: ListCompaniesInput): Promise<ToolRes
       ? raw
       : (raw as { data?: Company[] }).data ?? [];
 
-    const result = companies.map((c) => ({
-      id: c.id,
-      slug: c.slug,
-      name: c.name,
-      description: c.description,
-    }));
+    const result = companies.map((c) => {
+      const locationId = c.locationId ?? c.locations?.[0]?.id;
+      return {
+        id: c.id,
+        slug: c.slug,
+        name: c.name,
+        description: c.description,
+        ...(locationId !== undefined ? { locationId } : {}),
+      };
+    });
 
     cache.set(cacheKey, result, TTL.companies);
     logger.info('Tool executed successfully', { tool: TOOL, duration_ms: Date.now() - start, cached: false });

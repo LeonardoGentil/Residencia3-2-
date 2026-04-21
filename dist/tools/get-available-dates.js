@@ -43,7 +43,14 @@ async function getAvailableDates(input) {
             index_js_2.logger.info('No available dates', { tool: TOOL, duration_ms: Date.now() - start, cached: false });
             return { content: [{ type: 'text', text: 'Nenhuma vaga disponível neste mês. Tente outro mês.' }] };
         }
-        const result = days.map((d) => utcToSaoPaulo(d.date));
+        const result = days.map((d) => {
+            const formatted = { date: utcToSaoPaulo(String(d['date'] ?? '')) };
+            if (d['locationId'] !== undefined)
+                formatted['locationId'] = d['locationId'];
+            if (d['providerId'] !== undefined)
+                formatted['providerId'] = d['providerId'];
+            return formatted;
+        });
         index_js_1.cache.set(cacheKey, result, index_js_1.TTL.availableDates);
         index_js_2.logger.info('Tool executed successfully', { tool: TOOL, duration_ms: Date.now() - start, cached: false });
         return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };

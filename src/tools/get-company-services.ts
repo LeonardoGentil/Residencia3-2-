@@ -22,17 +22,25 @@ export async function getCompanyServices(input: GetCompanyServicesInput): Promis
   }
 
   try {
-    const raw = (await fetchCompanyServices(input.slug)) as { data?: Service[] } | Service[];
+    const raw = (await fetchCompanyServices(input.slug)) as
+      | { services?: Service[]; data?: Service[] }
+      | Service[];
     const services: Service[] = Array.isArray(raw)
       ? raw
-      : (raw as { data?: Service[] }).data ?? [];
+      : (raw as { services?: Service[] }).services ??
+        (raw as { data?: Service[] }).data ??
+        [];
 
-    const result = services.map((s) => ({
-      id: s.id,
-      abstractServiceId: s.abstractServiceId,
-      name: s.name,
-      description: s.description,
-    }));
+    const result = services.map((s) => {
+      const locationId = s.locationId ?? s.locations?.[0]?.id;
+      return {
+        id: s.id,
+        abstractServiceId: s.abstractServiceId,
+        name: s.name,
+        description: s.description,
+        ...(locationId !== undefined ? { locationId } : {}),
+      };
+    });
 
     cache.set(cacheKey, result, TTL.services);
     logger.info('Tool executed successfully', { tool: TOOL, duration_ms: Date.now() - start, cached: false });
