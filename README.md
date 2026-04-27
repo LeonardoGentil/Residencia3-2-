@@ -1,6 +1,6 @@
 # Filazero MCP Server
 
-
+Servidor MCP para a API Filazero — permite que agentes de IA agendem atendimentos e consultem tickets sem filas presenciais.
 
 Desenvolvido para a Residência em Software III — Universidade Tiradentes (UNIT) 2026.
 
@@ -9,7 +9,30 @@ Desenvolvido para a Residência em Software III — Universidade Tiradentes (UNI
 ## Pré-requisitos
 
 - [Node.js](https://nodejs.org) 20+
-- [Docker](https://docker.com) e Docker Compose (para rodar com containers)
+- [Docker](https://docker.com) e Docker Compose (opcional, para rodar com containers)
+
+---
+
+## Instalação e uso local
+
+```bash
+# 1. Clone o repositório
+git clone <url-do-repo>
+cd filazero-mcp
+
+# 2. Instale as dependências e compile
+npm install
+npm run build
+
+# 3. Instale globalmente (torna o comando filazero-mcp disponível no sistema)
+npm install -g .
+```
+
+### Modo desenvolvimento (sem compilar)
+
+```bash
+npm run dev
+```
 
 ---
 
@@ -19,74 +42,80 @@ Desenvolvido para a Residência em Software III — Universidade Tiradentes (UNI
 # 1. Clone o repositório e entre na pasta
 cd filazero-mcp
 
-# 2. Crie o arquivo .env a partir do exemplo
-cp .env.example .env
-
-# 3. Suba os containers
+# 2. Suba os containers
 docker compose up --build
-
-#4. Roda o MCP insepctor
-npx @modelcontextprotocol/inspector http://localhost:3000
-
 ```
 
-O servidor MCP ficará acessível em `http://localhost:3000` (direto) ou `http://localhost:80` (via Nginx).
+O servidor ficará acessível em `http://localhost:3000`.
 
 ---
 
-## Como rodar localmente (sem Docker)
+## Testando com o MCP Inspector
+
+Com o servidor rodando em modo HTTP (`MCP_TRANSPORT=http`):
 
 ```bash
-# 1. Instale as dependências
-npm install
-
-# 2. Configure as variáveis de ambiente
-cp .env.example .env
-
-# 3. Compile o TypeScript
-npm run build
-
-# 4. Inicie o servidor
-npm start
-
-# Ou em modo desenvolvimento (sem compilar)
-npm run dev
+npx @modelcontextprotocol/inspector --transport streamable-http http://localhost:3000/mcp
 ```
+
+> O endpoint MCP é `/mcp`, não a raiz `/`. Usar `http://localhost:3000` sem o path resultará em erro `Cannot POST /`.
 
 ---
 
 ## Como conectar ao Claude Desktop
 
-Edite o arquivo de configuração do Claude Desktop (`claude_desktop_config.json`):
+Edite o arquivo de configuração do Claude Desktop:
 
-**macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`  
-**Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+- **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
 
+**Windows:**
 ```json
 {
   "mcpServers": {
-    "filazero": {
-      "transport": {
-        "type": "http",
-        "url": "http://localhost:3000"
-      }
+    "filazero-mcp": {
+      "command": "cmd",
+      "args": ["/c", "filazero-mcp"]
     }
-  },
-  "preferences": {
-    "coworkWebSearchEnabled": true,
-    "coworkScheduledTasksEnabled": false,
-    "ccdScheduledTasksEnabled": false
   }
 }
 ```
 
-Substitua `/caminho/absoluto/para/filazero-mcp` pelo caminho real no seu sistema.
+**macOS / Linux:**
+```json
+{
+  "mcpServers": {
+    "filazero-mcp": {
+      "command": "filazero-mcp"
+    }
+  }
+}
+```
 
-> Após salvar, reinicie o Claude Desktop. O ícone de ferramentas deve aparecer no chat.
+O Claude Desktop inicia o servidor automaticamente em modo STDIO — não é necessário deixar nenhum processo rodando antes.
+
+> No Windows o `cmd /c` é necessário porque o Claude Desktop não herda o PATH do npm automaticamente.
+
+> Após salvar, reinicie o Claude Desktop. O ícone de ferramentas (🔨) deve aparecer na caixa de texto.
+
+### Quando publicado no npm (futuro)
+
+Sem precisar clonar o repositório:
+
+```json
+{
+  "mcpServers": {
+    "filazero-mcp": {
+      "command": "npx",
+      "args": ["-y", "filazero-mcp"]
+    }
+  }
+}
+```
 
 ---
 
-## As 8 Tools disponíveis
+## Tools disponíveis
 
 | Tool | Auth | Descrição |
 |------|------|-----------|
@@ -101,14 +130,13 @@ Substitua `/caminho/absoluto/para/filazero-mcp` pelo caminho real no seu sistema
 
 ---
 
-## Exemplo de conversa completa
+## Exemplo de conversa
 
 ```
 Usuário: Quero agendar uma consulta
 
-Claude: Vou buscar as empresas disponíveis...
-[usa list_companies]
-Encontrei as seguintes empresas:
+Claude: [usa list_companies]
+Empresas disponíveis:
 - Clínica Saúde Total (slug: clinica-saude-total)
 - Odonto Premium (slug: odonto-premium)
 Qual você prefere?
@@ -124,48 +152,42 @@ Qual serviço deseja?
 Usuário: Consulta Clínica Geral
 
 Claude: [usa get_available_dates com serviceId=42, year=2026, month=4]
-Datas disponíveis em abril/2026:
-08/04/2026, 10/04/2026, 15/04/2026
+Datas disponíveis em abril/2026: 08/04, 10/04, 15/04
 Qual data prefere?
 
 Usuário: 10 de abril
 
 Claude: [usa get_available_sessions com date=2026-04-10]
-Horários disponíveis:
+Horários:
 - 09:00 — Dr. João Silva (sessionId: 101)
 - 14:30 — Dra. Maria Oliveira (sessionId: 102)
-Qual horário prefere?
 
 Usuário: 14:30
 
 Claude: [usa get_booking_form com sessionId=102]
-Preciso de algumas informações:
-- Nome completo (obrigatório)
-- CPF (obrigatório)
-- Telefone (obrigatório)
+Preciso de: Nome completo, CPF, Telefone
 
 Usuário: João da Silva, CPF 123.456.789-00, tel (79) 99999-0000
 
-Claude: [usa schedule_appointment com token do usuário]
-✅ Agendamento confirmado!
-Código do ticket: ABC-123456
-Data: 10/04/2026 às 14:30
-Profissional: Dra. Maria Oliveira
-Guarde seu código para consultas futuras.
+Claude: [usa schedule_appointment]
+Agendamento confirmado!
+Código do ticket: ABC-123456 — 10/04/2026 às 14:30 com Dra. Maria Oliveira
 ```
 
 ---
 
 ## Variáveis de ambiente
 
+Todas as variáveis são opcionais — o servidor funciona sem nenhum `.env`.
+
 | Variável | Padrão | Descrição |
 |----------|--------|-----------|
-| `FILAZERO_API_URL` | `https://api.staging.filazero.net` | URL base da API (sempre staging) |
+| `MCP_TRANSPORT` | `stdio` | Modo de transporte: `stdio` ou `http` |
+| `MCP_SERVER_PORT` | `3000` | Porta do servidor (apenas modo `http`) |
+| `FILAZERO_API_URL` | `https://api.staging.filazero.net` | URL base da API |
 | `FILAZERO_APP_ORIGIN` | `https://app.filazero.net` | Origin enviado nos headers |
-| `MCP_SERVER_PORT` | `3000` | Porta do servidor MCP |
 | `RATE_LIMIT_RPM` | `30` | Máximo de requisições por minuto |
-| `CACHE_TTL_COMPANIES` | `300` | TTL do cache de empresas (segundos) |
-| `LOG_LEVEL` | `info` | Nível de log: debug, info, warn, error |
+| `LOG_LEVEL` | `info` | Nível de log: `debug`, `info`, `warn`, `error` |
 
 ---
 
@@ -183,9 +205,11 @@ src/
 └── types/                # Tipos TypeScript da API
 ```
 
+---
+
 ## Regras de negócio críticas
 
 1. **abstractServiceId** — sempre usar quando disponível e `> 0`
 2. **Content-Type** — POST/PUT/PATCH sempre com `application/json;charset=UTF-8`
 3. **Erros em HTTP 200** — verificar campo `messages` na resposta da API
-4. **Datas UTC** — converter para `America/Sao_Paulo` antes de exibir
+4. **Datas** — converter UTC para `America/Sao_Paulo` antes de exibir
