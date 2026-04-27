@@ -2,72 +2,176 @@
 
 Servidor MCP para a API Filazero — permite que agentes de IA agendem atendimentos e consultem tickets sem filas presenciais.
 
-Desenvolvido para a Residência em Software III — Universidade Tiradentes (UNIT) 2026.
+Desenvolvido para a **Residência em Software III — Universidade Tiradentes (UNIT) 2026**.
+
+---
+
+## O que é isso?
+
+Este projeto é um **servidor MCP (Model Context Protocol)** que conecta o Claude (e outros agentes de IA) à API do Filazero. Com ele, você consegue agendar atendimentos, consultar horários e verificar tickets apenas conversando com o Claude Desktop — sem abrir nenhum site ou app.
 
 ---
 
 ## Pré-requisitos
 
-- [Node.js](https://nodejs.org) 20+
-- [Docker](https://docker.com) e Docker Compose (opcional, para rodar com containers)
+Antes de começar, certifique-se de ter instalado:
+
+- [Node.js](https://nodejs.org) **20 ou superior**
+  - Para verificar: `node -v`
+- [Git](https://git-scm.com) (para clonar o repositório)
+- [Docker](https://www.docker.com/products/docker-desktop/) e Docker Compose *(opcional — apenas se quiser rodar com containers)*
+- [Claude Desktop](https://claude.ai/download) *(necessário para integrar o MCP ao Claude)*
 
 ---
 
-## Instalação e uso local
+## Instalação
+
+### 1. Clone o repositório
 
 ```bash
-# 1. Clone o repositório
 git clone <url-do-repo>
 cd filazero-mcp
+```
 
-# 2. Instale as dependências e compile
+### 2. Instale as dependências
+
+```bash
 npm install
-npm run build
+```
 
-# 3. Instale globalmente (torna o comando filazero-mcp disponível no sistema)
+### 3. Configure as variáveis de ambiente *(opcional)*
+
+O servidor já funciona sem nenhum `.env` — os valores padrão apontam para o ambiente de staging do Filazero.
+
+Se quiser personalizar, copie o arquivo de exemplo:
+
+```bash
+cp .env.example .env
+```
+
+Abra o `.env` e ajuste as variáveis conforme necessário. Veja a [tabela de variáveis](#variáveis-de-ambiente) abaixo.
+
+### 4. Compile o projeto
+
+```bash
+npm run build
+```
+
+Isso gera a pasta `dist/` com os arquivos JavaScript compilados.
+
+### 5. Instale globalmente *(necessário para integrar ao Claude Desktop)*
+
+```bash
 npm install -g .
 ```
 
-### Modo desenvolvimento (sem compilar)
+Isso registra o comando `filazero-mcp` no seu sistema, tornando-o acessível de qualquer lugar.
+
+Para verificar se funcionou:
 
 ```bash
+filazero-mcp --version
+# ou
+which filazero-mcp   # macOS/Linux
+where filazero-mcp   # Windows
+```
+
+---
+
+## Como rodar localmente (sem Docker)
+
+Após a instalação, você tem três formas de rodar o servidor:
+
+**Modo produção** (usando o build compilado):
+```bash
+npm start
+```
+
+**Modo desenvolvimento** (sem precisar compilar — ideal para mexer no código):
+```bash
 npm run dev
+```
+
+**Demo interativa** (chat no terminal usando Groq/Gemini):
+```bash
+# Adicione sua chave no .env: GROQ_API_KEY=sua_chave_aqui
+npm run demo
 ```
 
 ---
 
 ## Como rodar com Docker
 
-```bash
-# 1. Clone o repositório e entre na pasta
-cd filazero-mcp
+Se preferir usar containers:
 
-# 2. Suba os containers
+```bash
+# Sobe o servidor + proxy nginx
 docker compose up --build
 ```
 
-O servidor ficará acessível em `http://localhost:3000`.
+O servidor ficará disponível em:
+- MCP: `http://localhost:3000/mcp`
+- Health check: `http://localhost:3000/health`
+- Proxy Nginx: `http://localhost:80`
+
+Para parar:
+```bash
+docker compose down
+```
 
 ---
 
 ## Testando com o MCP Inspector
 
-Com o servidor rodando em modo HTTP (`MCP_TRANSPORT=http`):
+O MCP Inspector é uma interface web para testar as tools do servidor antes de conectar ao Claude Desktop.
+
+Com o servidor rodando em modo HTTP (`MCP_TRANSPORT=http` no `.env`), execute:
 
 ```bash
 npx @modelcontextprotocol/inspector --transport streamable-http http://localhost:3000/mcp
 ```
 
-> O endpoint MCP é `/mcp`, não a raiz `/`. Usar `http://localhost:3000` sem o path resultará em erro `Cannot POST /`.
+Acesse `http://localhost:5173` no navegador. Você verá todas as tools disponíveis e poderá testá-las manualmente.
+
+> **Atenção:** o endpoint MCP é `/mcp`, não `/`. Usar `http://localhost:3000` sem o path causará erro `Cannot POST /`.
 
 ---
 
 ## Como conectar ao Claude Desktop
 
-Edite o arquivo de configuração do Claude Desktop:
+Esta é a parte principal — depois de configurar, você fala com o Claude normalmente e ele já consegue agendar atendimentos para você.
 
-- **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
-- **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+### Passo 1 — Garanta que o build está feito e instalado globalmente
+
+```bash
+npm run build
+npm install -g .
+```
+
+### Passo 2 — Abra o arquivo de configuração do Claude Desktop
+
+Localize e abra o arquivo `claude_desktop_config.json` conforme seu sistema:
+
+| Sistema | Caminho |
+|---------|---------|
+| **Windows** | `%APPDATA%\Claude\claude_desktop_config.json` |
+| **macOS** | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+| **Linux** | `~/.config/Claude/claude_desktop_config.json` |
+
+**No Windows**, abra o Explorador de Arquivos, cole `%APPDATA%\Claude` na barra de endereço e pressione Enter. Se a pasta ou o arquivo não existir, crie-o.
+
+**Dica rápida no terminal:**
+```bash
+# Windows (PowerShell)
+code "$env:APPDATA\Claude\claude_desktop_config.json"
+
+# macOS/Linux
+code ~/Library/Application\ Support/Claude/claude_desktop_config.json
+```
+
+### Passo 3 — Adicione a configuração do servidor
+
+Cole o conteúdo abaixo no arquivo (substitua se já houver algo):
 
 **Windows:**
 ```json
@@ -92,15 +196,62 @@ Edite o arquivo de configuração do Claude Desktop:
 }
 ```
 
-O Claude Desktop inicia o servidor automaticamente em modo STDIO — não é necessário deixar nenhum processo rodando antes.
+> No Windows o `cmd /c` é obrigatório porque o Claude Desktop não herda o PATH do npm automaticamente.
 
-> No Windows o `cmd /c` é necessário porque o Claude Desktop não herda o PATH do npm automaticamente.
+Se você já tem outros servidores MCP configurados, adicione apenas o bloco `"filazero-mcp"` dentro do objeto `"mcpServers"` existente.
 
-> Após salvar, reinicie o Claude Desktop. O ícone de ferramentas (🔨) deve aparecer na caixa de texto.
+### Passo 4 — Reinicie o Claude Desktop
 
-### Quando publicado no npm (futuro)
+Feche completamente o Claude Desktop (inclusive da bandeja do sistema) e abra novamente.
 
-Sem precisar clonar o repositório:
+### Passo 5 — Verifique se funcionou
+
+Na caixa de texto do Claude Desktop, deve aparecer um **ícone de ferramentas (🔨)**. Clique nele para ver as tools do Filazero listadas. Se aparecer, está tudo certo!
+
+> O Claude Desktop inicia o servidor automaticamente em modo STDIO — não é necessário deixar nenhum processo rodando manualmente.
+
+---
+
+### Configuração alternativa — caminho absoluto
+
+Se o comando `filazero-mcp` não for reconhecido após a instalação global, use o caminho absoluto para o arquivo compilado:
+
+**Windows:**
+```json
+{
+  "mcpServers": {
+    "filazero-mcp": {
+      "command": "node",
+      "args": ["C:\\caminho\\completo\\para\\filazero-mcp\\dist\\index.js"]
+    }
+  }
+}
+```
+
+**macOS / Linux:**
+```json
+{
+  "mcpServers": {
+    "filazero-mcp": {
+      "command": "node",
+      "args": ["/caminho/completo/para/filazero-mcp/dist/index.js"]
+    }
+  }
+}
+```
+
+Para descobrir o caminho completo do projeto:
+```bash
+# No terminal, dentro da pasta do projeto:
+pwd          # macOS/Linux
+cd           # Windows (mostra o diretório atual)
+```
+
+---
+
+### Quando publicado no npm *(futuro)*
+
+Quando o pacote estiver no registry do npm, não será necessário clonar o repositório:
 
 ```json
 {
@@ -115,22 +266,9 @@ Sem precisar clonar o repositório:
 
 ---
 
-## Tools disponíveis
-
-| Tool | Auth | Descrição |
-|------|------|-----------|
-| `list_companies` | Pública | Lista todas as empresas disponíveis |
-| `get_company_services` | Pública | Serviços de uma empresa pelo slug |
-| `get_available_dates` | Pública | Dias com vagas em um mês |
-| `get_available_sessions` | Pública | Horários disponíveis em um dia |
-| `get_booking_form` | Pública | Campos do formulário de agendamento |
-| `schedule_appointment` | Bearer token | Emite o ticket de agendamento |
-| `check_ticket_status` | Pública | Status de um ticket pelo accessKey |
-| `list_my_tickets` | Bearer token | Todos os tickets do usuário |
-
----
-
 ## Exemplo de conversa
+
+Com o MCP configurado no Claude Desktop, a conversa fica assim:
 
 ```
 Usuário: Quero agendar uma consulta
@@ -176,18 +314,36 @@ Código do ticket: ABC-123456 — 10/04/2026 às 14:30 com Dra. Maria Oliveira
 
 ---
 
+## Tools disponíveis
+
+| Tool | Auth | Descrição |
+|------|------|-----------|
+| `list_companies` | Pública | Lista todas as empresas disponíveis |
+| `get_company_services` | Pública | Serviços de uma empresa pelo slug |
+| `get_available_dates` | Pública | Dias com vagas em um mês |
+| `get_available_sessions` | Pública | Horários disponíveis em um dia |
+| `get_booking_form` | Pública | Campos do formulário de agendamento |
+| `schedule_appointment` | Bearer token | Emite o ticket de agendamento |
+| `check_ticket_status` | Pública | Status de um ticket pelo accessKey |
+| `list_my_tickets` | Bearer token | Todos os tickets do usuário |
+
+> As tools que exigem **Bearer token** precisam que o usuário forneça seu token de autenticação do Filazero durante a conversa.
+
+---
+
 ## Variáveis de ambiente
 
 Todas as variáveis são opcionais — o servidor funciona sem nenhum `.env`.
 
 | Variável | Padrão | Descrição |
 |----------|--------|-----------|
-| `MCP_TRANSPORT` | `stdio` | Modo de transporte: `stdio` ou `http` |
-| `MCP_SERVER_PORT` | `3000` | Porta do servidor (apenas modo `http`) |
+| `MCP_TRANSPORT` | `stdio` | Modo de transporte: `stdio` (Claude Desktop) ou `http` (Inspector/Docker) |
+| `MCP_SERVER_PORT` | `3000` | Porta do servidor HTTP |
 | `FILAZERO_API_URL` | `https://api.staging.filazero.net` | URL base da API |
 | `FILAZERO_APP_ORIGIN` | `https://app.filazero.net` | Origin enviado nos headers |
 | `RATE_LIMIT_RPM` | `30` | Máximo de requisições por minuto |
 | `LOG_LEVEL` | `info` | Nível de log: `debug`, `info`, `warn`, `error` |
+| `GROQ_API_KEY` | *(vazio)* | Chave da API Groq (apenas para a demo) |
 
 ---
 
@@ -207,9 +363,46 @@ src/
 
 ---
 
+## Resolução de problemas
+
+**O ícone de ferramentas não aparece no Claude Desktop**
+- Verifique se o `npm install -g .` foi executado com sucesso
+- Confirme que o arquivo `claude_desktop_config.json` foi salvo corretamente (JSON válido, sem vírgulas sobrando)
+- Feche completamente o Claude Desktop (verifique a bandeja do sistema) e abra novamente
+- No Windows, tente usar o caminho absoluto na configuração
+
+**`filazero-mcp: command not found`**
+- O `npm install -g .` não foi executado ou falhou
+- Verifique se o diretório global do npm está no PATH: `npm config get prefix`
+- Use a configuração com caminho absoluto como alternativa
+
+**Porta 3000 já em uso (modo HTTP/Docker)**
+```bash
+# macOS/Linux
+kill $(lsof -t -i:3000)
+
+# Windows (PowerShell)
+Get-Process -Id (Get-NetTCPConnection -LocalPort 3000).OwningProcess | Stop-Process
+```
+
+**Permissão negada no Docker (Linux)**
+```bash
+sudo usermod -aG docker $USER
+newgrp docker
+```
+
+**Alterações no código não refletem**
+```bash
+npm run build          # recompila
+npm install -g .       # reinstala globalmente
+# Reinicie o Claude Desktop
+```
+
+---
+
 ## Regras de negócio críticas
 
-1. **abstractServiceId** — sempre usar quando disponível e `> 0`
+1. **abstractServiceId** — sempre usar quando disponível e `> 0` (tem prioridade sobre o `id` padrão)
 2. **Content-Type** — POST/PUT/PATCH sempre com `application/json;charset=UTF-8`
-3. **Erros em HTTP 200** — verificar campo `messages` na resposta da API
-4. **Datas** — converter UTC para `America/Sao_Paulo` antes de exibir
+3. **Erros em HTTP 200** — verificar campo `messages` na resposta da API mesmo em respostas com status 200
+4. **Datas** — converter UTC para `America/Sao_Paulo` antes de exibir ao usuário
