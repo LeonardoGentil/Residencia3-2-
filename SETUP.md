@@ -109,7 +109,12 @@ MCP_TRANSPORT=http
 RATE_LIMIT_RPM=30
 CACHE_TTL_COMPANIES=300
 LOG_LEVEL=info
+ALLOW_HTTP_LOGIN=false
 ```
+
+> **Observação sobre `RATE_LIMIT_RPM`:** o limite é mantido em memória pelo processo. Se você rodar várias réplicas (ex.: nginx balanceando entre N containers), cada réplica conta separadamente — para um limite global você precisaria de Redis. Em ambiente de demo/residência, uma réplica só é o suficiente.
+
+> **Observação sobre `ALLOW_HTTP_LOGIN`:** a tool `login` aceita e-mail e senha. Em modo `stdio` (Claude Desktop local) a senha nunca sai da máquina. Em modo `http`, a senha trafega entre cliente e servidor — por isso o login é bloqueado por padrão. Só ative `ALLOW_HTTP_LOGIN=true` se você for o operador da rede e souber o que está fazendo.
 
 ---
 
@@ -199,6 +204,18 @@ Na aba **Tools**, clique em qualquer tool para testá-la.
 - Preencha: `slug` → `nome-da-empresa`
 - Clique em **Run Tool**
 
+**Exemplo — autenticar para agendar:**
+- Clique em `login`
+- Preencha: `email` e `password` da conta no Filazero
+- Clique em **Run Tool**
+- Copie o `access_token` da resposta para usar como `token` em `schedule_appointment` ou `list_my_tickets`
+
+> Em modo HTTP (que é o padrão do `docker-compose`) o login fica bloqueado. Para testar o `login`, rode em modo stdio:
+> ```bash
+> MCP_TRANSPORT=stdio npm start
+> ```
+> ou ative explicitamente: `ALLOW_HTTP_LOGIN=true`.
+
 ---
 
 ## 9. Conectar ao Claude Desktop
@@ -251,7 +268,8 @@ filazero-mcp/
 ├── src/
 │   ├── index.ts                  # Entrypoint do servidor
 │   ├── client/filazero.ts        # Cliente HTTP da API Filazero
-│   ├── tools/                    # 8 tools MCP
+│   ├── tools/                    # 9 tools MCP
+│   │   ├── login.ts
 │   │   ├── list-companies.ts
 │   │   ├── get-company-services.ts
 │   │   ├── get-available-dates.ts
