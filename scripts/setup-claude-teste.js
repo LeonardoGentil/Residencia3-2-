@@ -8,13 +8,39 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { execSync } = require('child_process');
 
-// Define o conteúdo que vai ser inserido no arquivo de configuração:
-// o tipo de transporte HTTP e o endereço do servidor
+// Encontra o caminho do executável Node.js no computador da pessoa
+function findNodePath() {
+  // process.execPath é o node que está rodando este script agora
+  if (process.execPath && fs.existsSync(process.execPath)) {
+    return process.execPath;
+  }
+  // Fallback: procura no PATH do sistema
+  try {
+    const cmd = process.platform === 'win32' ? 'where node' : 'which node';
+    return execSync(cmd, { encoding: 'utf-8' }).trim().split('\n')[0].trim();
+  } catch {
+    throw new Error('Node.js não encontrado no sistema. Verifique se ele está instalado e no PATH.');
+  }
+}
+
+// Encontra o index.js dentro da pasta dist do projeto
+function findIndexPath() {
+  const projectRoot = path.join(__dirname, '..');
+  const indexPath = path.join(projectRoot, 'dist', 'index.js');
+  if (!fs.existsSync(indexPath)) {
+    throw new Error(`dist/index.js não encontrado em: ${indexPath}\nRode "npm run build" antes de executar este script.`);
+  }
+  return indexPath;
+}
+
+const nodePath = findNodePath();
+const indexPath = findIndexPath();
 
 const CONFIG_ENTRY = {
-  type: 'http',
-  url: 'http://localhost:3000/mcp',
+  command: nodePath,
+  args: [indexPath],
 };
 
 // Função que retorna o caminho do claude_desktop_config.json
