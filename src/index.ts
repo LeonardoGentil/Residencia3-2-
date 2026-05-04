@@ -90,19 +90,6 @@ function zodToJsonSchema(schema: import('zod').ZodObject<import('zod').ZodRawSha
   return { type: 'object', properties, required };
 }
 
-// ─── Server setup ────────────────────────────────────────────────────────────
-
-const server = new Server(
-  { name: 'filazero-mcp', version: '1.0.0' },
-  {
-    capabilities: {
-      tools: {},
-      resources: {},
-      prompts: {},
-    },
-  },
-);
-
 // ─── Tool definitions ─────────────────────────────────────────────────────────
 
 const TOOLS = [
@@ -154,8 +141,9 @@ const TOOLS = [
   },
 ];
 
-// ─── Handlers ────────────────────────────────────────────────────────────────
+// ─── Handlers (registrados num server específico) ─────────────────────────────
 
+function registerHandlers(server: Server): void {
 server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOLS }));
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
@@ -273,10 +261,22 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
 
   throw new Error(`Prompt não encontrado: ${name}`);
 });
+}
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 
 function createServer(): Server {
+  const server = new Server(
+    { name: 'filazero-mcp', version: '1.0.0' },
+    {
+      capabilities: {
+        tools: {},
+        resources: {},
+        prompts: {},
+      },
+    },
+  );
+  registerHandlers(server);
   return server;
 }
 
@@ -350,6 +350,7 @@ async function startHttp(): Promise<void> {
 
 async function startStdio(): Promise<void> {
   const transport = new StdioServerTransport();
+  const server = createServer();
   await server.connect(transport);
   logger.info('Filazero MCP Server iniciado em modo stdio', { tool: 'server' });
 }

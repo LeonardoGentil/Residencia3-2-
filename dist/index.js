@@ -69,14 +69,6 @@ function zodToJsonSchema(schema) {
     }
     return { type: 'object', properties, required };
 }
-// ─── Server setup ────────────────────────────────────────────────────────────
-const server = new index_js_1.Server({ name: 'filazero-mcp', version: '1.0.0' }, {
-    capabilities: {
-        tools: {},
-        resources: {},
-        prompts: {},
-    },
-});
 // ─── Tool definitions ─────────────────────────────────────────────────────────
 const TOOLS = [
     {
@@ -125,103 +117,113 @@ const TOOLS = [
         inputSchema: zodToJsonSchema(list_my_tickets_js_1.listMyTicketsSchema),
     },
 ];
-// ─── Handlers ────────────────────────────────────────────────────────────────
-server.setRequestHandler(types_js_1.ListToolsRequestSchema, async () => ({ tools: TOOLS }));
-server.setRequestHandler(types_js_1.CallToolRequestSchema, async (request) => {
-    const { name, arguments: args } = request.params;
-    const input = (args ?? {});
-    switch (name) {
-        case 'login':
-            return (0, login_js_1.login)(login_js_1.loginSchema.parse(input));
-        case 'list_companies':
-            return (0, list_companies_js_1.listCompanies)(list_companies_js_1.listCompaniesSchema.parse(input));
-        case 'get_company_services':
-            return (0, get_company_services_js_1.getCompanyServices)(get_company_services_js_1.getCompanyServicesSchema.parse(input));
-        case 'get_available_dates':
-            return (0, get_available_dates_js_1.getAvailableDates)(get_available_dates_js_1.getAvailableDatesSchema.parse(input));
-        case 'get_available_sessions':
-            return (0, get_available_sessions_js_1.getAvailableSessions)(get_available_sessions_js_1.getAvailableSessionsSchema.parse(input));
-        case 'get_booking_form':
-            return (0, get_booking_form_js_1.getBookingForm)(get_booking_form_js_1.getBookingFormSchema.parse(input));
-        case 'schedule_appointment':
-            return (0, schedule_appointment_js_1.scheduleAppointment)(schedule_appointment_js_1.scheduleAppointmentSchema.parse(input));
-        case 'check_ticket_status':
-            return (0, check_ticket_status_js_1.checkTicketStatus)(check_ticket_status_js_1.checkTicketStatusSchema.parse(input));
-        case 'list_my_tickets':
-            return (0, list_my_tickets_js_1.listMyTickets)(list_my_tickets_js_1.listMyTicketsSchema.parse(input));
-        default:
-            return {
-                content: [{ type: 'text', text: `Tool desconhecida: ${name}` }],
-                isError: true,
-            };
-    }
-});
-// ─── Resources ────────────────────────────────────────────────────────────────
-server.setRequestHandler(types_js_1.ListResourcesRequestSchema, async () => ({
-    resources: [
-        {
-            uri: 'filazero://categories',
-            name: 'Categorias de Serviços',
-            description: 'Categorias de serviços disponíveis na plataforma Filazero',
-            mimeType: 'text/markdown',
-        },
-        {
-            uri: 'filazero://ticket-lifecycle',
-            name: 'Ciclo de Vida do Ticket',
-            description: 'Estados e transições de um ticket de agendamento',
-            mimeType: 'text/markdown',
-        },
-        {
-            uri: 'filazero://scheduling-flow',
-            name: 'Fluxo de Agendamento',
-            description: 'Guia completo da sequência de tools para realizar um agendamento',
-            mimeType: 'text/markdown',
-        },
-    ],
-}));
-server.setRequestHandler(types_js_1.ReadResourceRequestSchema, async (request) => {
-    const { uri } = request.params;
-    const contentMap = {
-        'filazero://categories': categories_js_1.categoriesContent,
-        'filazero://ticket-lifecycle': ticket_lifecycle_js_1.ticketLifecycleContent,
-        'filazero://scheduling-flow': scheduling_flow_js_1.schedulingFlowContent,
-    };
-    const text = contentMap[uri];
-    if (!text) {
-        throw new Error(`Resource não encontrado: ${uri}`);
-    }
-    return {
-        contents: [{ uri, mimeType: 'text/markdown', text }],
-    };
-});
-// ─── Prompts ──────────────────────────────────────────────────────────────────
-server.setRequestHandler(types_js_1.ListPromptsRequestSchema, async () => ({
-    prompts: [
-        {
-            name: agendar_atendimento_js_1.agendarAtendimentoPrompt.name,
-            description: agendar_atendimento_js_1.agendarAtendimentoPrompt.description,
-            arguments: agendar_atendimento_js_1.agendarAtendimentoPrompt.arguments,
-        },
-        {
-            name: consultar_agendamento_js_1.consultarAgendamentoPrompt.name,
-            description: consultar_agendamento_js_1.consultarAgendamentoPrompt.description,
-            arguments: consultar_agendamento_js_1.consultarAgendamentoPrompt.arguments,
-        },
-    ],
-}));
-server.setRequestHandler(types_js_1.GetPromptRequestSchema, async (request) => {
-    const { name, arguments: promptArgs } = request.params;
-    const args = (promptArgs ?? {});
-    if (name === agendar_atendimento_js_1.agendarAtendimentoPrompt.name) {
-        return { messages: agendar_atendimento_js_1.agendarAtendimentoPrompt.getMessages(args) };
-    }
-    if (name === consultar_agendamento_js_1.consultarAgendamentoPrompt.name) {
-        return { messages: consultar_agendamento_js_1.consultarAgendamentoPrompt.getMessages(args) };
-    }
-    throw new Error(`Prompt não encontrado: ${name}`);
-});
+// ─── Handlers (registrados num server específico) ─────────────────────────────
+function registerHandlers(server) {
+    server.setRequestHandler(types_js_1.ListToolsRequestSchema, async () => ({ tools: TOOLS }));
+    server.setRequestHandler(types_js_1.CallToolRequestSchema, async (request) => {
+        const { name, arguments: args } = request.params;
+        const input = (args ?? {});
+        switch (name) {
+            case 'login':
+                return (0, login_js_1.login)(login_js_1.loginSchema.parse(input));
+            case 'list_companies':
+                return (0, list_companies_js_1.listCompanies)(list_companies_js_1.listCompaniesSchema.parse(input));
+            case 'get_company_services':
+                return (0, get_company_services_js_1.getCompanyServices)(get_company_services_js_1.getCompanyServicesSchema.parse(input));
+            case 'get_available_dates':
+                return (0, get_available_dates_js_1.getAvailableDates)(get_available_dates_js_1.getAvailableDatesSchema.parse(input));
+            case 'get_available_sessions':
+                return (0, get_available_sessions_js_1.getAvailableSessions)(get_available_sessions_js_1.getAvailableSessionsSchema.parse(input));
+            case 'get_booking_form':
+                return (0, get_booking_form_js_1.getBookingForm)(get_booking_form_js_1.getBookingFormSchema.parse(input));
+            case 'schedule_appointment':
+                return (0, schedule_appointment_js_1.scheduleAppointment)(schedule_appointment_js_1.scheduleAppointmentSchema.parse(input));
+            case 'check_ticket_status':
+                return (0, check_ticket_status_js_1.checkTicketStatus)(check_ticket_status_js_1.checkTicketStatusSchema.parse(input));
+            case 'list_my_tickets':
+                return (0, list_my_tickets_js_1.listMyTickets)(list_my_tickets_js_1.listMyTicketsSchema.parse(input));
+            default:
+                return {
+                    content: [{ type: 'text', text: `Tool desconhecida: ${name}` }],
+                    isError: true,
+                };
+        }
+    });
+    // ─── Resources ────────────────────────────────────────────────────────────────
+    server.setRequestHandler(types_js_1.ListResourcesRequestSchema, async () => ({
+        resources: [
+            {
+                uri: 'filazero://categories',
+                name: 'Categorias de Serviços',
+                description: 'Categorias de serviços disponíveis na plataforma Filazero',
+                mimeType: 'text/markdown',
+            },
+            {
+                uri: 'filazero://ticket-lifecycle',
+                name: 'Ciclo de Vida do Ticket',
+                description: 'Estados e transições de um ticket de agendamento',
+                mimeType: 'text/markdown',
+            },
+            {
+                uri: 'filazero://scheduling-flow',
+                name: 'Fluxo de Agendamento',
+                description: 'Guia completo da sequência de tools para realizar um agendamento',
+                mimeType: 'text/markdown',
+            },
+        ],
+    }));
+    server.setRequestHandler(types_js_1.ReadResourceRequestSchema, async (request) => {
+        const { uri } = request.params;
+        const contentMap = {
+            'filazero://categories': categories_js_1.categoriesContent,
+            'filazero://ticket-lifecycle': ticket_lifecycle_js_1.ticketLifecycleContent,
+            'filazero://scheduling-flow': scheduling_flow_js_1.schedulingFlowContent,
+        };
+        const text = contentMap[uri];
+        if (!text) {
+            throw new Error(`Resource não encontrado: ${uri}`);
+        }
+        return {
+            contents: [{ uri, mimeType: 'text/markdown', text }],
+        };
+    });
+    // ─── Prompts ──────────────────────────────────────────────────────────────────
+    server.setRequestHandler(types_js_1.ListPromptsRequestSchema, async () => ({
+        prompts: [
+            {
+                name: agendar_atendimento_js_1.agendarAtendimentoPrompt.name,
+                description: agendar_atendimento_js_1.agendarAtendimentoPrompt.description,
+                arguments: agendar_atendimento_js_1.agendarAtendimentoPrompt.arguments,
+            },
+            {
+                name: consultar_agendamento_js_1.consultarAgendamentoPrompt.name,
+                description: consultar_agendamento_js_1.consultarAgendamentoPrompt.description,
+                arguments: consultar_agendamento_js_1.consultarAgendamentoPrompt.arguments,
+            },
+        ],
+    }));
+    server.setRequestHandler(types_js_1.GetPromptRequestSchema, async (request) => {
+        const { name, arguments: promptArgs } = request.params;
+        const args = (promptArgs ?? {});
+        if (name === agendar_atendimento_js_1.agendarAtendimentoPrompt.name) {
+            return { messages: agendar_atendimento_js_1.agendarAtendimentoPrompt.getMessages(args) };
+        }
+        if (name === consultar_agendamento_js_1.consultarAgendamentoPrompt.name) {
+            return { messages: consultar_agendamento_js_1.consultarAgendamentoPrompt.getMessages(args) };
+        }
+        throw new Error(`Prompt não encontrado: ${name}`);
+    });
+}
 // ─── Start ────────────────────────────────────────────────────────────────────
 function createServer() {
+    const server = new index_js_1.Server({ name: 'filazero-mcp', version: '1.0.0' }, {
+        capabilities: {
+            tools: {},
+            resources: {},
+            prompts: {},
+        },
+    });
+    registerHandlers(server);
     return server;
 }
 async function startHttp() {
@@ -282,6 +284,7 @@ async function startHttp() {
 }
 async function startStdio() {
     const transport = new stdio_js_1.StdioServerTransport();
+    const server = createServer();
     await server.connect(transport);
     index_js_2.logger.info('Filazero MCP Server iniciado em modo stdio', { tool: 'server' });
 }
