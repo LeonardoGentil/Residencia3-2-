@@ -261,6 +261,53 @@ Reinicie o Claude Desktop. O ícone de ferramentas aparecerá no chat e você po
 
 ---
 
+## 10. Front web (opcional)
+
+Além do Claude Desktop e do MCP Inspector, o repositório inclui um cliente web próprio em `web/` — uma SPA React/Vite que conversa com o MCP usando uma IA gratuita escolhida pelo usuário (Groq, OpenRouter, Cerebras ou Google Gemini).
+
+### Subir o front
+
+Em outro terminal (com o servidor MCP já rodando):
+
+```bash
+cd web
+npm install
+npm run dev
+```
+
+Acesse `http://localhost:5173`.
+
+### Usar
+
+1. Na barra lateral, escolha um **provider de IA**.
+2. Clique em **"obter chave grátis"** (link abre o site do provider) e gere uma chave.
+3. Cole a chave no campo da barra lateral. Ela fica salva no `localStorage` do navegador — não é enviada pra ninguém.
+4. Verifique se a **bolinha verde** está acesa em "Conexão MCP" (significa conectado).
+5. Digite uma pergunta no chat, ex.: "liste as empresas disponíveis".
+
+A IA decide automaticamente quais tools chamar e mostra cada chamada em tempo real (clique no card pra ver os argumentos e o resultado).
+
+### Providers suportados
+
+| Provider | Free tier | Modelos sugeridos |
+|---|---|---|
+| Groq | grátis, rápido | Llama 3.3 70B, Llama 3.1 8B Instant |
+| OpenRouter | grátis com `:free` | DeepSeek V3, Qwen 2.5, Llama 3.3 |
+| Cerebras | grátis | Llama 3.3 70B |
+| Google Gemini | grátis (15 RPM) | Gemini 2.0 Flash |
+
+Adicionar provider novo é editar `web/src/lib/providers.ts`.
+
+### Build de produção
+
+```bash
+cd web && npm run build
+```
+
+Saída em `web/dist/` — pode servir com qualquer static host (nginx, Vercel, etc.).
+
+---
+
 ## Estrutura do projeto
 
 ```
@@ -289,7 +336,14 @@ filazero-mcp/
 ├── nginx.conf
 ├── .env.example
 ├── package.json
-└── tsconfig.json
+├── tsconfig.json
+└── web/                          # Front web opcional (Vite + React + Tailwind)
+    ├── src/
+    │   ├── App.tsx
+    │   ├── components/           # Sidebar, Chat, ToolCallCard, etc.
+    │   └── lib/                  # mcpClient, llmClient, chatLoop, providers
+    ├── package.json
+    └── vite.config.ts
 ```
 
 ---
