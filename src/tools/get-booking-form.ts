@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { fetchCustomFields } from '../client/filazero.js';
 import { cache, TTL } from '../cache/index.js';
 import { logger } from '../logger/index.js';
+import { DEMO_ENABLED, mockBookingForm } from '../mock/demo-fixtures.js';
 import type { CustomField, ToolResult } from '../types/index.js';
 
 export const getBookingFormSchema = z.object({
@@ -31,6 +32,14 @@ export async function getBookingForm(input: GetBookingFormInput): Promise<ToolRe
       ? raw
       : (raw as { data?: CustomField[] }).data ?? [];
 
+    // Demo mode: se API real não tem form, devolve um genérico
+    if (fields.length === 0 && DEMO_ENABLED) {
+      const demo = mockBookingForm();
+      cache.set(cacheKey, demo, TTL.customFields);
+      logger.info('Demo mode: serving mocked form', { tool: TOOL, duration_ms: Date.now() - start, cached: false });
+      return { content: [{ type: 'text', text: JSON.stringify(demo, null, 2) }] };
+    }
+
     const result = fields.map((f) => ({
       name: f.name,
       label: f.label,
@@ -45,6 +54,12 @@ export async function getBookingForm(input: GetBookingFormInput): Promise<ToolRe
     return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    if (DEMO_ENABLED) {
+      const demo = mockBookingForm();
+      cache.set(cacheKey, demo, TTL.customFields);
+      logger.info('Demo mode: API failed, serving mocked form', { tool: TOOL, duration_ms: Date.now() - start, error: message });
+      return { content: [{ type: 'text', text: JSON.stringify(demo, null, 2) }] };
+    }
     logger.error('Tool failed', { tool: TOOL, duration_ms: Date.now() - start, error: message });
     return { content: [{ type: 'text', text: `Erro ao buscar formulário de agendamento: ${message}` }], isError: true };
   }

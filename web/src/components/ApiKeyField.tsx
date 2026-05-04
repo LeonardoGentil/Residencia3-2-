@@ -20,7 +20,7 @@ export default function ApiKeyField({ value, onChange, signupUrl, providerName }
           rel="noopener noreferrer"
           className="text-xs text-blue-600 hover:underline"
         >
-          obter chave grátis ↗
+          Obter chave grátis ↗
         </a>
       </div>
       <div className="relative">

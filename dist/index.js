@@ -14,6 +14,7 @@ const types_js_1 = require("@modelcontextprotocol/sdk/types.js");
 const index_js_2 = require("./logger/index.js");
 // Tools
 const login_js_1 = require("./tools/login.js");
+const register_js_1 = require("./tools/register.js");
 const list_companies_js_1 = require("./tools/list-companies.js");
 const get_company_services_js_1 = require("./tools/get-company-services.js");
 const get_available_dates_js_1 = require("./tools/get-available-dates.js");
@@ -77,6 +78,11 @@ const TOOLS = [
         inputSchema: zodToJsonSchema(login_js_1.loginSchema),
     },
     {
+        name: 'register',
+        description: 'Cria uma nova conta no Filazero. Em demo mode retorna um access_token sintético; em produção orienta o usuário a se registrar via app.filazero.net.',
+        inputSchema: zodToJsonSchema(register_js_1.registerSchema),
+    },
+    {
         name: 'list_companies',
         description: 'Lista todas as empresas disponíveis para agendamento na plataforma Filazero',
         inputSchema: { type: 'object', properties: {}, required: [] },
@@ -126,6 +132,8 @@ function registerHandlers(server) {
         switch (name) {
             case 'login':
                 return (0, login_js_1.login)(login_js_1.loginSchema.parse(input));
+            case 'register':
+                return (0, register_js_1.register)(register_js_1.registerSchema.parse(input));
             case 'list_companies':
                 return (0, list_companies_js_1.listCompanies)(list_companies_js_1.listCompaniesSchema.parse(input));
             case 'get_company_services':

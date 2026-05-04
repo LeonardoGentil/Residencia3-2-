@@ -98,8 +98,25 @@ export default function Chat({
           },
         });
       } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
-        setError(msg);
+        const raw = e instanceof Error ? e.message : String(e);
+        // Detecta status no formato "LLM 429: ..." gerado pelo llmClient
+        const statusMatch = raw.match(/^LLM (\d+):/);
+        const status = statusMatch ? Number(statusMatch[1]) : 0;
+
+        let hint = '';
+        if (status === 429) {
+          hint =
+            ' — modelo saturado. Troque o modelo na sidebar (evite Llama 3.3 70B no OpenRouter, é o mais concorrido) ou troque pra Groq, que tem free tier mais robusto.';
+        } else if (status === 404 && /model/i.test(raw)) {
+          hint =
+            ' — esse ID de modelo não existe nesse provider. Escolha outro modelo no dropdown.';
+        } else if (status === 401 || status === 403) {
+          hint = ' — chave da API inválida ou expirada. Gere uma nova no link "obter chave grátis".';
+        } else if (status === 400) {
+          hint = ' — request rejeitada pelo provider. Pode ser que o modelo escolhido não suporte tool calling.';
+        }
+
+        setError(raw + hint);
       } finally {
         setBusy(false);
       }

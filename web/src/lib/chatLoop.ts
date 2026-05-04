@@ -10,6 +10,73 @@ import type {
 
 const MAX_ITERATIONS = 10;
 
+// Mantém só os últimos N turnos do usuário no contexto enviado ao LLM.
+// Cada turno arrasta o assistant + N tool messages. Sem cap, conversa
+// longa estoura tokens por minuto em modelos pequenos (Llama 8B = 6k TPM).
+const MAX_USER_TURNS_IN_CONTEXT = 8;
+
+// Limite anti-loop: se o LLM chamar a mesma tool com os mesmos args (ou só
+// 1 campo diferente) mais de N vezes seguidas, abortamos a iteração e
+// devolvemos uma mensagem pro usuário decidir.
+const MAX_REPEATED_TOOL_CALLS = 3;
+
+// Tool result muito longo (resposta enorme da API Filazero) é truncado pra
+// caber no orçamento de tokens. Caracteres ≈ tokens × 4 em PT-BR.
+const MAX_TOOL_RESULT_CHARS = 4000;
+
+// Remove inconsistências do histórico antes de mandar pro LLM.
+// Caso clássico: assistant pediu uma tool mas a request foi interrompida
+// (user mandou outra mensagem antes do tool result chegar). Sem o tool
+// result, OpenAI/Anthropic retornam 400 reclamando de tool_call_ids sem
+// resposta. Solução: para cada assistant com tool_calls que não tem todas
+// as tool messages logo depois, sintetiza tool messages com placeholder.
+function sanitizeHistory(history: ChatMessage[]): ChatMessage[] {
+  const out: ChatMessage[] = [];
+  for (let i = 0; i < history.length; i++) {
+    const m = history[i];
+    if (!m) continue;
+    out.push(m);
+
+    if (m.role === 'assistant' && m.toolCalls && m.toolCalls.length > 0) {
+      // Coleta os tool_call_ids que esse assistant pediu
+      const expected = new Set(m.toolCalls.map((tc) => tc.id));
+      // Varre as próximas mensagens enquanto forem tool messages
+      let j = i + 1;
+      while (j < history.length && history[j]?.role === 'tool') {
+        const tcid = history[j]?.toolCallId;
+        if (tcid) expected.delete(tcid);
+        j++;
+      }
+      // Se sobrou algum tool_call_id sem resposta, sintetiza
+      for (const orphan of expected) {
+        out.push({
+          id: makeId('tool'),
+          role: 'tool',
+          content: '[chamada interrompida — sem resultado]',
+          toolCallId: orphan,
+        });
+      }
+    }
+  }
+  return out;
+}
+
+function trimHistory(history: ChatMessage[]): ChatMessage[] {
+  // Encontra o índice do (N+1)-ésimo último user message contando do fim
+  let userCount = 0;
+  let startIdx = 0;
+  for (let i = history.length - 1; i >= 0; i--) {
+    if (history[i]?.role === 'user') {
+      userCount++;
+      if (userCount > MAX_USER_TURNS_IN_CONTEXT) {
+        startIdx = i + 1;
+        break;
+      }
+    }
+  }
+  return history.slice(startIdx);
+}
+
 export interface ChatLoopOptions {
   provider: Provider;
   apiKey: string;
@@ -82,10 +149,14 @@ export async function runChatLoop(opts: ChatLoopOptions): Promise<void> {
   };
   opts.onMessage(userMsg);
 
-  // Histórico interno acumulando assistant + tool messages para próximas iterações
-  const internalHistory: ChatMessage[] = [...history, userMsg];
+  // Histórico interno acumulando assistant + tool messages para próximas iterações.
+  // Sanitize → remove órfãos de tool_call. Trim → limita tokens.
+  const internalHistory: ChatMessage[] = [...trimHistory(sanitizeHistory(history)), userMsg];
 
   const tools = mcpToolsToOpenAI(conn.tools);
+
+  // Histórico das últimas tool calls pra detectar loop
+  const recentToolCalls: string[] = [];
 
   for (let i = 0; i < MAX_ITERATIONS; i++) {
     const messages = toOpenAIMessages(systemPrompt, internalHistory.slice(0, -1), userInput);
@@ -152,6 +223,29 @@ export async function runChatLoop(opts: ChatLoopOptions): Promise<void> {
       status: 'running' as const,
     }));
 
+    // ── Anti-loop ───────────────────────────────────────────────────────────
+    // Se a mesma tool foi chamada N vezes seguidas, abortamos o loop
+    // independentemente dos args. Cobre o caso do modelo rodando
+    // get_available_dates pra meses 5,6,7,8,9,10 sem parar.
+    for (const tc of toolCalls) {
+      recentToolCalls.push(tc.name);
+    }
+    while (recentToolCalls.length > MAX_REPEATED_TOOL_CALLS + 2) {
+      recentToolCalls.shift();
+    }
+    const sameNameCount = recentToolCalls.filter(
+      (n) => n === recentToolCalls[recentToolCalls.length - 1],
+    ).length;
+    if (sameNameCount > MAX_REPEATED_TOOL_CALLS) {
+      const stuckMsg: ChatMessage = {
+        id: makeId('asst'),
+        role: 'assistant',
+        content: `O agente ficou repetindo a tool \`${toolCalls[0]?.name}\` sem progresso. Isso geralmente significa que a empresa/serviço escolhido não tem agenda configurada na staging do Filazero. Tente outra empresa (use \`list_companies\`) ou um serviço diferente.`,
+      };
+      opts.onMessage(stuckMsg);
+      return;
+    }
+
     const assistantMsg: ChatMessage = {
       id: assistantMsgId,
       role: 'assistant',
@@ -167,11 +261,17 @@ export async function runChatLoop(opts: ChatLoopOptions): Promise<void> {
       const start = Date.now();
       try {
         const result = await callTool(conn, tc.name, tc.args);
-        const text = result.content
+        const fullText = result.content
           .map((c) => c.text ?? '')
           .filter(Boolean)
           .join('\n');
-        tc.result = text;
+        // Versão completa fica visível na UI (ToolCallCard expand). A versão
+        // mandada pro LLM é truncada pra preservar TPM.
+        const truncated =
+          fullText.length > MAX_TOOL_RESULT_CHARS
+            ? `${fullText.slice(0, MAX_TOOL_RESULT_CHARS)}\n\n[...truncado: resultado tinha ${fullText.length} chars]`
+            : fullText;
+        tc.result = fullText;
         tc.status = result.isError ? 'error' : 'done';
         tc.durationMs = Date.now() - start;
 
@@ -181,7 +281,7 @@ export async function runChatLoop(opts: ChatLoopOptions): Promise<void> {
         const toolMsg: ChatMessage = {
           id: makeId('tool'),
           role: 'tool',
-          content: text,
+          content: truncated,
           toolCallId: tc.id,
         };
         internalHistory.push(toolMsg);

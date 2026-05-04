@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { fetchAvailableDates } from '../client/filazero.js';
 import { cache, TTL } from '../cache/index.js';
 import { logger } from '../logger/index.js';
+import { DEMO_ENABLED, mockAvailableDates } from '../mock/demo-fixtures.js';
 import type { ToolResult } from '../types/index.js';
 
 export const getAvailableDatesSchema = z.object({
@@ -47,6 +48,13 @@ export async function getAvailableDates(input: GetAvailableDatesInput): Promise<
       : (raw as { data?: Array<Record<string, unknown>> }).data ?? [];
 
     if (days.length === 0) {
+      // Demo mode: API real vazia → injeta fixture coerente
+      if (DEMO_ENABLED) {
+        const demo = mockAvailableDates(input.year, input.month);
+        cache.set(cacheKey, demo, TTL.availableDates);
+        logger.info('Demo mode: serving mocked dates', { tool: TOOL, duration_ms: Date.now() - start, cached: false });
+        return { content: [{ type: 'text', text: JSON.stringify(demo, null, 2) }] };
+      }
       cache.set(cacheKey, [], TTL.availableDates);
       logger.info('No available dates', { tool: TOOL, duration_ms: Date.now() - start, cached: false });
       return { content: [{ type: 'text', text: 'Nenhuma vaga disponível neste mês. Tente outro mês.' }] };
@@ -64,6 +72,13 @@ export async function getAvailableDates(input: GetAvailableDatesInput): Promise<
     return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    // Demo mode: API real falhou → injeta fixture pra demo seguir
+    if (DEMO_ENABLED) {
+      const demo = mockAvailableDates(input.year, input.month);
+      cache.set(cacheKey, demo, TTL.availableDates);
+      logger.info('Demo mode: API failed, serving mocked dates', { tool: TOOL, duration_ms: Date.now() - start, error: message });
+      return { content: [{ type: 'text', text: JSON.stringify(demo, null, 2) }] };
+    }
     logger.error('Tool failed', { tool: TOOL, duration_ms: Date.now() - start, error: message });
     return { content: [{ type: 'text', text: `Erro ao buscar datas disponíveis: ${message}` }], isError: true };
   }

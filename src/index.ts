@@ -18,6 +18,7 @@ import { logger } from './logger/index.js';
 
 // Tools
 import { login, loginSchema } from './tools/login.js';
+import { register, registerSchema } from './tools/register.js';
 import { listCompanies, listCompaniesSchema } from './tools/list-companies.js';
 import { getCompanyServices, getCompanyServicesSchema } from './tools/get-company-services.js';
 import { getAvailableDates, getAvailableDatesSchema } from './tools/get-available-dates.js';
@@ -100,6 +101,12 @@ const TOOLS = [
     inputSchema: zodToJsonSchema(loginSchema),
   },
   {
+    name: 'register',
+    description:
+      'Cria uma nova conta no Filazero. Em demo mode retorna um access_token sintético; em produção orienta o usuário a se registrar via app.filazero.net.',
+    inputSchema: zodToJsonSchema(registerSchema),
+  },
+  {
     name: 'list_companies',
     description: 'Lista todas as empresas disponíveis para agendamento na plataforma Filazero',
     inputSchema: { type: 'object', properties: {}, required: [] },
@@ -153,6 +160,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   switch (name) {
     case 'login':
       return login(loginSchema.parse(input));
+
+    case 'register':
+      return register(registerSchema.parse(input));
 
     case 'list_companies':
       return listCompanies(listCompaniesSchema.parse(input));

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { fetchToken } from '../client/filazero.js';
 import { logger } from '../logger/index.js';
+import { DEMO_ENABLED, mockLogin } from '../mock/demo-fixtures.js';
 import type { ToolResult } from '../types/index.js';
 
 export const loginSchema = z.object({
@@ -17,7 +18,9 @@ export async function login(input: LoginInput): Promise<ToolResult> {
   const TOOL = 'login';
   const start = Date.now();
 
-  if (TRANSPORT === 'http' && !ALLOW_HTTP_LOGIN) {
+  // Em demo mode, libera HTTP porque a senha do user é fictícia e nenhum
+  // dado real é usado; o flag de bloqueio existe pra cenário de produção.
+  if (TRANSPORT === 'http' && !ALLOW_HTTP_LOGIN && !DEMO_ENABLED) {
     return {
       content: [
         {
@@ -58,6 +61,35 @@ export async function login(input: LoginInput): Promise<ToolResult> {
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+
+    // Demo mode: login real falhou → cria conta sintética e devolve token mock
+    if (DEMO_ENABLED) {
+      const fake = mockLogin(input.email);
+      logger.info('Demo mode: login real falhou, gerando token sintético', {
+        tool: TOOL,
+        duration_ms: Date.now() - start,
+        cached: false,
+      });
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                access_token: fake.access_token,
+                expires_in: fake.expires_in,
+                userName: fake.userName,
+                message:
+                  '[DEMO] Login simulado. Use este access_token em schedule_appointment e list_my_tickets.',
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+      };
+    }
+
     logger.error('Tool failed', { tool: TOOL, duration_ms: Date.now() - start, error: 'auth_failure' });
     return {
       content: [{ type: 'text', text: `Falha no login: ${message}` }],

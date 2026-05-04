@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { postTicket } from '../client/filazero.js';
 import { cache, TTL } from '../cache/index.js';
 import { logger } from '../logger/index.js';
+import { DEMO_ENABLED, mockCreateTicket } from '../mock/demo-fixtures.js';
 import type { ToolResult } from '../types/index.js';
 
 export const scheduleAppointmentSchema = z.object({
@@ -68,6 +69,35 @@ export async function scheduleAppointment(input: ScheduleAppointmentInput): Prom
               ...previous,
               message:
                 'Este agendamento já foi confirmado nos últimos 60s (idempotência). Nenhum ticket duplicado foi criado.',
+            },
+            null,
+            2,
+          ),
+        },
+      ],
+    };
+  }
+
+  // Demo mode: sessionIds vindos do mock estão na faixa 1001-1099. Não bate
+  // na API real (que rejeitaria) — gera ticket sintético.
+  if (DEMO_ENABLED && input.sessionId >= 1001 && input.sessionId <= 1099) {
+    const ticket = mockCreateTicket({
+      sessionId: input.sessionId,
+      serviceId: input.serviceId,
+      formData: input.formData,
+    });
+    cache.set<CachedTicket>(idempotencyKey, ticket, TTL.scheduleIdempotency);
+    logger.info('Demo mode: created mocked ticket', { tool: TOOL, duration_ms: Date.now() - start, cached: false });
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(
+            {
+              id: ticket.id,
+              accessKey: ticket.accessKey,
+              status: ticket.status,
+              message: '[DEMO] Agendamento simulado com sucesso. Guarde o accessKey para consulta.',
             },
             null,
             2,

@@ -62,3 +62,23 @@ export function getMcpUrl(): string {
 export function setMcpUrl(url: string): void {
   storage.set('mcp_url', url);
 }
+
+// ── Auth ─────────────────────────────────────────────────────────────────────
+
+export function getAuthToken(): string | null {
+  return storage.get('auth_token');
+}
+
+export function setAuthToken(token: string | null): void {
+  if (token) storage.set('auth_token', token);
+  else storage.remove('auth_token');
+}
+
+export function getAuthEmail(): string | null {
+  return storage.get('auth_email');
+}
+
+export function setAuthEmail(email: string | null): void {
+  if (email) storage.set('auth_email', email);
+  else storage.remove('auth_email');
+}

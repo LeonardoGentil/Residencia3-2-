@@ -2,7 +2,8 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import Chat from './components/Chat';
-import { connect, readResource } from './lib/mcpClient';
+import AuthPage from './components/AuthPage';
+import { connect } from './lib/mcpClient';
 import { getProvider } from './lib/providers';
 import {
   getApiKey,
@@ -13,6 +14,10 @@ import {
   getSelectedProvider,
   setSelectedModel,
   setSelectedProvider,
+  getAuthToken,
+  setAuthToken,
+  getAuthEmail,
+  setAuthEmail,
 } from './lib/storage';
 import type { ChatMessage, McpConnection } from './lib/types';
 
@@ -22,11 +27,23 @@ Você tem acesso a tools para autenticar (login), listar empresas, ver serviços
 
 Regras:
 - Sempre responda em português brasileiro.
-- NUNCA invente nomes de empresas, serviços, datas ou horários — use SOMENTE dados retornados pelas tools.
-- Sempre que possível, siga a ordem: list_companies → get_company_services → get_available_dates → get_available_sessions → get_booking_form → schedule_appointment.
-- Use abstractServiceId nos passos onde for fornecido.
-- Para schedule_appointment e list_my_tickets é necessário um Bearer token. Você pode obtê-lo chamando a tool 'login' (que pode estar bloqueada se o servidor estiver em modo HTTP).
-- Quando uma tool falhar, explique o erro e proponha próximos passos.`;
+
+PRINCÍPIO DE MÍNIMO ESFORÇO (mais importante que qualquer outra regra):
+- Faça O MÍNIMO de tool calls necessárias pra responder o que o usuário pediu nesta mensagem.
+- Se o usuário pediu listar/consultar algo: rode A tool específica e PARE. Mostre a resposta e pergunte o que fazer. NÃO chame tools "preventivamente" pra adiantar próximos passos.
+- Encadeamento de múltiplas tools só quando o usuário explicitou intent agregada — ex: "quero agendar uma consulta na empresa X", "me leve até o horário disponível mais próximo". Aí sim segue: list_companies → get_company_services → get_available_dates → get_available_sessions → get_booking_form → schedule_appointment.
+- Em dúvida sobre intent: faça apenas a primeira tool, mostre o resultado e pergunte o próximo passo em 1 linha.
+
+Validação de parâmetros:
+- TODOS os parâmetros (slug, serviceId, locationId, sessionId, providerId, date) DEVEM vir literais de uma tool anterior. Se você não tem o valor, NÃO INVENTE — chame a tool anterior primeiro (get_available_dates retorna locationId, get_available_sessions retorna sessionId).
+- Use abstractServiceId quando o serviço tiver esse campo.
+- schedule_appointment e list_my_tickets exigem Bearer token (tool 'login'). list_my_tickets já retorna tickets do usuário logado — não pode ser usada sem token.
+
+REGRAS ANTI-LOOP (críticas):
+- Se uma tool retornar "Nenhuma vaga disponível", "não encontrado" ou similar, ISSO NÃO É ERRO TÉCNICO. É resposta válida. PARE imediatamente, informe o usuário em 1 linha e pergunte se quer tentar outro serviço/empresa. NÃO tente outros meses, IDs ou variações automaticamente.
+- NUNCA chame a mesma tool com argumentos parecidos mais de 2 vezes seguidas. Se algo falhou 2x, pare e explique pro usuário.
+
+Quando tool falhar de verdade (timeout, erro 500, auth), leia a mensagem, explique em 1 frase ao usuário e pergunte como prosseguir.`;
 
 export default function App() {
   // Provider / modelo / chave
@@ -43,11 +60,33 @@ export default function App() {
   const [connecting, setConnecting] = useState(false);
   const [connError, setConnError] = useState<string | null>(null);
 
-  // System prompt — tenta ler do MCP, com fallback
-  const [systemPrompt, setSystemPrompt] = useState<string>(DEFAULT_SYSTEM_PROMPT);
+  // Auth — gate antes do chat
+  const [authToken, setAuthTokenState] = useState<string | null>(() => getAuthToken());
+  const [authEmail, setAuthEmailState] = useState<string | null>(() => getAuthEmail());
+
+  // System prompt fixo + injeção do token quando logado, pra agente não
+  // pedir login de novo dentro do chat.
+  const systemPrompt = authToken
+    ? `${DEFAULT_SYSTEM_PROMPT}\n\nUsuário já autenticado. E-mail: ${authEmail}. Use este Bearer token quando precisar (schedule_appointment, list_my_tickets): ${authToken}`
+    : DEFAULT_SYSTEM_PROMPT;
 
   // Chat
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+
+  function handleAuthenticated(token: string, email: string) {
+    setAuthTokenState(token);
+    setAuthEmailState(email);
+    setAuthToken(token);
+    setAuthEmail(email);
+  }
+
+  function handleLogout() {
+    setAuthTokenState(null);
+    setAuthEmailState(null);
+    setAuthToken(null);
+    setAuthEmail(null);
+    setMessages([]);
+  }
 
   // Conecta ao MCP
   const reconnect = useCallback(async (url: string) => {
@@ -57,16 +96,6 @@ export default function App() {
     try {
       const c = await connect(url);
       setConn(c);
-
-      // Tenta enriquecer o system prompt com o resource scheduling-flow
-      try {
-        const flow = await readResource(c, 'filazero://scheduling-flow');
-        if (flow) {
-          setSystemPrompt(`${DEFAULT_SYSTEM_PROMPT}\n\n--- Guia interno ---\n${flow}`);
-        }
-      } catch {
-        // Resource é opcional
-      }
     } catch (e) {
       setConnError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -107,9 +136,27 @@ export default function App() {
     persistMcpUrl(url);
   }
 
+  // Tela de auth aparece como gate antes do chat
+  if (!authToken) {
+    return (
+      <AuthPage
+        conn={conn}
+        connecting={connecting}
+        connError={connError}
+        onAuthenticated={handleAuthenticated}
+      />
+    );
+  }
+
   return (
     <div className="h-screen flex flex-col">
-      <Header connected={!!conn} toolCount={conn?.tools.length ?? 0} />
+      <Header
+        connected={!!conn}
+        toolCount={conn?.tools.length ?? 0}
+        authEmail={authEmail}
+        onLogout={handleLogout}
+        onSwitchAccount={handleLogout}
+      />
       <div className="flex-1 flex overflow-hidden">
         <Sidebar
           providerId={providerId}
@@ -119,12 +166,14 @@ export default function App() {
           conn={conn}
           connecting={connecting}
           connError={connError}
+          authEmail={authEmail}
           onProviderChange={handleProviderChange}
           onModelChange={handleModelChange}
           onApiKeyChange={handleApiKeyChange}
           onMcpUrlChange={handleMcpUrlChange}
           onReconnect={() => reconnect(mcpUrl)}
           onClearChat={() => setMessages([])}
+          onLogout={handleLogout}
         />
         <Chat
           provider={provider}

@@ -12,12 +12,14 @@ interface SidebarProps {
   conn: McpConnection | null;
   connecting: boolean;
   connError: string | null;
+  authEmail: string | null;
   onProviderChange: (id: string) => void;
   onModelChange: (id: string) => void;
   onApiKeyChange: (key: string) => void;
   onMcpUrlChange: (url: string) => void;
   onReconnect: () => void;
   onClearChat: () => void;
+  onLogout: () => void;
 }
 
 export default function Sidebar(props: SidebarProps) {
@@ -49,6 +51,7 @@ export default function Sidebar(props: SidebarProps) {
           <ProviderSelector
             providerId={props.providerId}
             modelId={props.modelId}
+            apiKey={props.apiKey}
             onProviderChange={props.onProviderChange}
             onModelChange={props.onModelChange}
           />
@@ -84,12 +87,24 @@ export default function Sidebar(props: SidebarProps) {
         )}
       </div>
 
-      <div className="mt-auto p-5 border-t border-gray-100">
+      <div className="mt-auto p-5 border-t border-gray-100 space-y-2">
+        {props.authEmail && (
+          <div className="text-xs text-gray-600 mb-2 truncate" title={props.authEmail}>
+            <div className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Logado como</div>
+            {props.authEmail}
+          </div>
+        )}
         <button
           onClick={props.onClearChat}
           className="w-full text-xs text-gray-600 hover:text-gray-900 border border-gray-200 hover:border-gray-300 rounded-lg py-2 transition-colors"
         >
-          limpar conversa
+          Limpar conversa
+        </button>
+        <button
+          onClick={props.onLogout}
+          className="w-full text-xs text-red-600 hover:text-red-700 border border-red-200 hover:border-red-300 rounded-lg py-2 transition-colors"
+        >
+          Sair
         </button>
       </div>
     </aside>

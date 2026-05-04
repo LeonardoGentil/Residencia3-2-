@@ -7,6 +7,7 @@ const zod_1 = require("zod");
 const filazero_js_1 = require("../client/filazero.js");
 const index_js_1 = require("../cache/index.js");
 const index_js_2 = require("../logger/index.js");
+const demo_fixtures_js_1 = require("../mock/demo-fixtures.js");
 exports.scheduleAppointmentSchema = zod_1.z.object({
     token: zod_1.z.string().min(1).describe('Bearer token do usuário autenticado'),
     sessionId: zod_1.z.number().int().positive().describe('ID da sessão escolhida'),
@@ -45,6 +46,30 @@ async function scheduleAppointment(input) {
                     text: JSON.stringify({
                         ...previous,
                         message: 'Este agendamento já foi confirmado nos últimos 60s (idempotência). Nenhum ticket duplicado foi criado.',
+                    }, null, 2),
+                },
+            ],
+        };
+    }
+    // Demo mode: sessionIds vindos do mock estão na faixa 1001-1099. Não bate
+    // na API real (que rejeitaria) — gera ticket sintético.
+    if (demo_fixtures_js_1.DEMO_ENABLED && input.sessionId >= 1001 && input.sessionId <= 1099) {
+        const ticket = (0, demo_fixtures_js_1.mockCreateTicket)({
+            sessionId: input.sessionId,
+            serviceId: input.serviceId,
+            formData: input.formData,
+        });
+        index_js_1.cache.set(idempotencyKey, ticket, index_js_1.TTL.scheduleIdempotency);
+        index_js_2.logger.info('Demo mode: created mocked ticket', { tool: TOOL, duration_ms: Date.now() - start, cached: false });
+        return {
+            content: [
+                {
+                    type: 'text',
+                    text: JSON.stringify({
+                        id: ticket.id,
+                        accessKey: ticket.accessKey,
+                        status: ticket.status,
+                        message: '[DEMO] Agendamento simulado com sucesso. Guarde o accessKey para consulta.',
                     }, null, 2),
                 },
             ],
