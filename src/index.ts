@@ -17,6 +17,7 @@ import {
 import { logger } from './logger/index.js';
 
 // Tools
+import { login, loginSchema } from './tools/login.js';
 import { listCompanies, listCompaniesSchema } from './tools/list-companies.js';
 import { getCompanyServices, getCompanyServicesSchema } from './tools/get-company-services.js';
 import { getAvailableDates, getAvailableDatesSchema } from './tools/get-available-dates.js';
@@ -106,6 +107,12 @@ const server = new Server(
 
 const TOOLS = [
   {
+    name: 'login',
+    description:
+      'Autentica o usuário no Filazero e retorna um access_token. Use o token como argumento "token" em schedule_appointment e list_my_tickets. Bloqueado em modo HTTP por padrão (use stdio com Claude Desktop).',
+    inputSchema: zodToJsonSchema(loginSchema),
+  },
+  {
     name: 'list_companies',
     description: 'Lista todas as empresas disponíveis para agendamento na plataforma Filazero',
     inputSchema: { type: 'object', properties: {}, required: [] },
@@ -156,6 +163,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const input = (args ?? {}) as Record<string, unknown>;
 
   switch (name) {
+    case 'login':
+      return login(loginSchema.parse(input));
+
     case 'list_companies':
       return listCompanies(listCompaniesSchema.parse(input));
 

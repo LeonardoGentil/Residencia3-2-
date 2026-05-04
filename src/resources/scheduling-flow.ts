@@ -2,12 +2,18 @@ export const schedulingFlowContent = `# Guia Completo do Fluxo de Agendamento �
 
 ## Visão Geral
 
-Este MCP Server expõe 8 tools que permitem realizar um agendamento completo via conversa natural.
+Este MCP Server expõe 9 tools que permitem realizar um agendamento completo via conversa natural.
 Siga a sequência abaixo para garantir o fluxo correto.
 
 ---
 
 ## Sequência das Tools
+
+### Passo 0 — login (opcional, só se for agendar ou listar tickets do usuário)
+Autentica o usuário e devolve um access_token.
+- **Entrada:** email, password
+- **Saída:** access_token (use como argumento "token" nos passos 6 e em list_my_tickets)
+- **Atenção:** só funciona em modo stdio (Claude Desktop). Em modo HTTP é bloqueado por padrão.
 
 ### Passo 1 — list_companies
 Lista todas as empresas disponíveis para agendamento.
@@ -59,7 +65,7 @@ Emite o ticket de agendamento com os dados preenchidos.
 
 1. **Sempre use abstractServiceId** (não o id simples) nos passos 3, 4 e 6
 2. **Datas já estão em horário de Brasília** — não converter novamente
-3. **Token Bearer** é necessário apenas para schedule_appointment e list_my_tickets
+3. **Token Bearer** é necessário apenas para schedule_appointment e list_my_tickets — pode ser obtido via tool \`login\` (stdio only)
 
 ---
 

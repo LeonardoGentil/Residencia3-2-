@@ -40,4 +40,5 @@ exports.TTL = {
     availableDates: 60,
     sessions: 30,
     customFields: 120,
+    scheduleIdempotency: 60,
 };

@@ -13,6 +13,7 @@ const streamableHttp_js_1 = require("@modelcontextprotocol/sdk/server/streamable
 const types_js_1 = require("@modelcontextprotocol/sdk/types.js");
 const index_js_2 = require("./logger/index.js");
 // Tools
+const login_js_1 = require("./tools/login.js");
 const list_companies_js_1 = require("./tools/list-companies.js");
 const get_company_services_js_1 = require("./tools/get-company-services.js");
 const get_available_dates_js_1 = require("./tools/get-available-dates.js");
@@ -28,7 +29,32 @@ const scheduling_flow_js_1 = require("./resources/scheduling-flow.js");
 // Prompts
 const agendar_atendimento_js_1 = require("./prompts/agendar-atendimento.js");
 const consultar_agendamento_js_1 = require("./prompts/consultar-agendamento.js");
-// ─── Zod → JSON Schema helper (minimal, covers our use cases) ────────────────
+function zodTypeToJson(def, description) {
+    const desc = description ?? def.description;
+    switch (def.typeName) {
+        case 'ZodNumber':
+            return { type: 'number', description: desc };
+        case 'ZodBoolean':
+            return { type: 'boolean', description: desc };
+        case 'ZodRecord':
+            return { type: 'object', additionalProperties: { type: 'string' }, description: desc };
+        case 'ZodEnum':
+            return { type: 'string', enum: def.values, description: desc };
+        case 'ZodArray':
+            return {
+                type: 'array',
+                items: def.type ? zodTypeToJson(def.type._def) : { type: 'string' },
+                description: desc,
+            };
+        case 'ZodOptional':
+        case 'ZodNullable':
+        case 'ZodDefault':
+            return def.innerType ? zodTypeToJson(def.innerType._def, desc) : { type: 'string', description: desc };
+        case 'ZodString':
+        default:
+            return { type: 'string', description: desc };
+    }
+}
 function zodToJsonSchema(schema) {
     const shape = schema.shape;
     const properties = {};
@@ -36,18 +62,8 @@ function zodToJsonSchema(schema) {
     for (const [key, field] of Object.entries(shape)) {
         const f = field;
         const def = f._def;
-        let type = 'string';
-        if (def.typeName === 'ZodNumber')
-            type = 'number';
-        else if (def.typeName === 'ZodBoolean')
-            type = 'boolean';
-        else if (def.typeName === 'ZodRecord') {
-            properties[key] = { type: 'object', additionalProperties: { type: 'string' }, description: def.description };
-            required.push(key);
-            continue;
-        }
-        properties[key] = { type, description: def.description };
-        const isOptional = def.typeName === 'ZodOptional';
+        properties[key] = zodTypeToJson(def);
+        const isOptional = def.typeName === 'ZodOptional' || def.typeName === 'ZodDefault';
         if (!isOptional)
             required.push(key);
     }
@@ -63,6 +79,11 @@ const server = new index_js_1.Server({ name: 'filazero-mcp', version: '1.0.0' },
 });
 // ─── Tool definitions ─────────────────────────────────────────────────────────
 const TOOLS = [
+    {
+        name: 'login',
+        description: 'Autentica o usuário no Filazero e retorna um access_token. Use o token como argumento "token" em schedule_appointment e list_my_tickets. Bloqueado em modo HTTP por padrão (use stdio com Claude Desktop).',
+        inputSchema: zodToJsonSchema(login_js_1.loginSchema),
+    },
     {
         name: 'list_companies',
         description: 'Lista todas as empresas disponíveis para agendamento na plataforma Filazero',
@@ -110,6 +131,8 @@ server.setRequestHandler(types_js_1.CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
     const input = (args ?? {});
     switch (name) {
+        case 'login':
+            return (0, login_js_1.login)(login_js_1.loginSchema.parse(input));
         case 'list_companies':
             return (0, list_companies_js_1.listCompanies)(list_companies_js_1.listCompaniesSchema.parse(input));
         case 'get_company_services':
