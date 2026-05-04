@@ -265,7 +265,7 @@ Reinicie o Claude Desktop. O ícone de ferramentas aparecerá no chat e você po
 
 Além do Claude Desktop e do MCP Inspector, o repositório inclui um cliente web próprio em `web/` — uma SPA React/Vite que conversa com o MCP usando uma IA gratuita escolhida pelo usuário (Groq, OpenRouter, Cerebras ou Google Gemini).
 
-### Subir o front
+### Subir o front (modo dev)
 
 Em outro terminal (com o servidor MCP já rodando):
 
@@ -276,6 +276,16 @@ npm run dev
 ```
 
 Acesse `http://localhost:5173`.
+
+### Subir o front via Docker (junto do resto)
+
+O `docker-compose.yml` já inclui o serviço `web` que builda e serve o front em **`http://localhost:8080`**:
+
+```bash
+docker compose up --build
+```
+
+Sobe os 3 containers (mcp-server, nginx, web). O nginx do container `web` faz proxy de `/mcp` pro `mcp-server`, então a URL padrão `http://localhost:3000/mcp` funciona normalmente — ou troca pra `http://localhost:8080/mcp` se preferir tudo num host só.
 
 ### Usar
 
