@@ -227,6 +227,18 @@ function createServer() {
 async function startHttp() {
     const port = Number(process.env['MCP_SERVER_PORT'] ?? 3000);
     const app = (0, express_1.default)();
+    // CORS — necessário para o front web em outra origem
+    app.use((req, res, next) => {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, mcp-session-id, accept');
+        res.setHeader('Access-Control-Expose-Headers', 'mcp-session-id');
+        if (req.method === 'OPTIONS') {
+            res.sendStatus(204);
+            return;
+        }
+        next();
+    });
     app.use(express_1.default.json());
     // Map of sessionId → transport (stateful mode)
     const transports = new Map();
