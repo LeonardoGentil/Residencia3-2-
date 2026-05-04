@@ -19,6 +19,7 @@ git clone https://github.com/LeonardoGentil/Residencia3-2-
 cd Residencia3-2-
 npm install
 npm run build
+cp .env.example .env
 ```
 
 **3. Configure o Claude Desktop automaticamente:**
