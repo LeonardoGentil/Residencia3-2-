@@ -37,6 +37,41 @@ import { consultarAgendamentoPrompt } from './prompts/consultar-agendamento.js';
 
 // ─── Zod → JSON Schema helper (minimal, covers our use cases) ────────────────
 
+interface ZodDef {
+  typeName: string;
+  description?: string;
+  innerType?: { _def: ZodDef };
+  type?: { _def: ZodDef };
+  values?: string[];
+}
+
+function zodTypeToJson(def: ZodDef, description?: string): Record<string, unknown> {
+  const desc = description ?? def.description;
+  switch (def.typeName) {
+    case 'ZodNumber':
+      return { type: 'number', description: desc };
+    case 'ZodBoolean':
+      return { type: 'boolean', description: desc };
+    case 'ZodRecord':
+      return { type: 'object', additionalProperties: { type: 'string' }, description: desc };
+    case 'ZodEnum':
+      return { type: 'string', enum: def.values, description: desc };
+    case 'ZodArray':
+      return {
+        type: 'array',
+        items: def.type ? zodTypeToJson(def.type._def) : { type: 'string' },
+        description: desc,
+      };
+    case 'ZodOptional':
+    case 'ZodNullable':
+    case 'ZodDefault':
+      return def.innerType ? zodTypeToJson(def.innerType._def, desc) : { type: 'string', description: desc };
+    case 'ZodString':
+    default:
+      return { type: 'string', description: desc };
+  }
+}
+
 function zodToJsonSchema(schema: import('zod').ZodObject<import('zod').ZodRawShape>): Record<string, unknown> {
   const shape = schema.shape;
   const properties: Record<string, unknown> = {};
@@ -44,20 +79,10 @@ function zodToJsonSchema(schema: import('zod').ZodObject<import('zod').ZodRawSha
 
   for (const [key, field] of Object.entries(shape)) {
     const f = field as import('zod').ZodTypeAny;
-    const def = f._def as { typeName: string; description?: string; innerType?: { _def: { typeName: string } }; checks?: Array<{ kind: string; value?: number }> };
+    const def = f._def as ZodDef;
+    properties[key] = zodTypeToJson(def);
 
-    let type = 'string';
-    if (def.typeName === 'ZodNumber') type = 'number';
-    else if (def.typeName === 'ZodBoolean') type = 'boolean';
-    else if (def.typeName === 'ZodRecord') {
-      properties[key] = { type: 'object', additionalProperties: { type: 'string' }, description: def.description };
-      required.push(key);
-      continue;
-    }
-
-    properties[key] = { type, description: def.description };
-
-    const isOptional = def.typeName === 'ZodOptional';
+    const isOptional = def.typeName === 'ZodOptional' || def.typeName === 'ZodDefault';
     if (!isOptional) required.push(key);
   }
 
