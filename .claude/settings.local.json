@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git ls-tree *)",
+      "Bash(git stash *)",
+      "Bash(git rebase *)",
+      "Bash(Move-Item .claude *)",
+      "Bash(git checkout *)",
+      "Bash(git add *)",
+      "Bash(GIT_EDITOR=true git rebase *)"
+    ]
+  }
+}
