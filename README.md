@@ -58,3 +58,17 @@ docker compose down
 ```bash
 docker compose up --build
 ```
+
+---
+
+## Cliente web (alternativa ao Claude Desktop)
+
+Em vez de usar o Claude Desktop, você pode rodar um cliente web próprio (SPA React) que se conecta ao MCP usando uma IA gratuita à sua escolha (Groq, OpenRouter, Cerebras ou Google Gemini).
+
+```bash
+cd web
+npm install
+npm run dev
+```
+
+Acesse `http://localhost:5173`, escolha o provider, cole a chave gratuita e converse com o agente. Detalhes em `SETUP.md` seção 10.

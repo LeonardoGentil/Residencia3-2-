@@ -9,6 +9,7 @@ exports.fetchCustomFields = fetchCustomFields;
 exports.postTicket = postTicket;
 exports.fetchTicketStatus = fetchTicketStatus;
 exports.fetchMyTickets = fetchMyTickets;
+exports.fetchToken = fetchToken;
 const index_js_1 = require("../logger/index.js");
 // ─── Constants ────────────────────────────────────────────────────────────────
 const BASE_URL = process.env['FILAZERO_API_URL'] ?? 'https://api.staging.filazero.net';
@@ -139,4 +140,28 @@ async function fetchTicketStatus(accessKey) {
 }
 async function fetchMyTickets(token) {
     return apiFetch('/v2/ticketing/me/filtered-tickets', { bearerToken: token });
+}
+async function fetchToken(email, password) {
+    checkRateLimit();
+    const body = new URLSearchParams({
+        grant_type: 'password',
+        username: email,
+        password,
+    }).toString();
+    const headers = {
+        ...REQUIRED_HEADERS,
+        'Content-Type': 'application/x-www-form-urlencoded',
+    };
+    const res = await fetch(`${BASE_URL}/Token`, {
+        method: 'POST',
+        headers,
+        body,
+        signal: AbortSignal.timeout(10_000),
+    });
+    const json = (await res.json().catch(() => ({})));
+    if (!res.ok || !json.access_token) {
+        const description = json.error_description ?? json.error ?? `Falha no login (HTTP ${res.status})`;
+        throw new Error(description);
+    }
+    return json;
 }

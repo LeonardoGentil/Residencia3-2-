@@ -6,6 +6,7 @@ const zod_1 = require("zod");
 const filazero_js_1 = require("../client/filazero.js");
 const index_js_1 = require("../cache/index.js");
 const index_js_2 = require("../logger/index.js");
+const demo_fixtures_js_1 = require("../mock/demo-fixtures.js");
 exports.getAvailableDatesSchema = zod_1.z.object({
     slug: zod_1.z.string().min(1).describe('Slug da empresa'),
     serviceId: zod_1.z.number().int().positive().describe('ID do serviço (usar abstractServiceId quando disponível)'),
@@ -39,6 +40,13 @@ async function getAvailableDates(input) {
             ? raw
             : raw.data ?? [];
         if (days.length === 0) {
+            // Demo mode: API real vazia → injeta fixture coerente
+            if (demo_fixtures_js_1.DEMO_ENABLED) {
+                const demo = (0, demo_fixtures_js_1.mockAvailableDates)(input.year, input.month);
+                index_js_1.cache.set(cacheKey, demo, index_js_1.TTL.availableDates);
+                index_js_2.logger.info('Demo mode: serving mocked dates', { tool: TOOL, duration_ms: Date.now() - start, cached: false });
+                return { content: [{ type: 'text', text: JSON.stringify(demo, null, 2) }] };
+            }
             index_js_1.cache.set(cacheKey, [], index_js_1.TTL.availableDates);
             index_js_2.logger.info('No available dates', { tool: TOOL, duration_ms: Date.now() - start, cached: false });
             return { content: [{ type: 'text', text: 'Nenhuma vaga disponível neste mês. Tente outro mês.' }] };
@@ -57,6 +65,13 @@ async function getAvailableDates(input) {
     }
     catch (err) {
         const message = err instanceof Error ? err.message : String(err);
+        // Demo mode: API real falhou → injeta fixture pra demo seguir
+        if (demo_fixtures_js_1.DEMO_ENABLED) {
+            const demo = (0, demo_fixtures_js_1.mockAvailableDates)(input.year, input.month);
+            index_js_1.cache.set(cacheKey, demo, index_js_1.TTL.availableDates);
+            index_js_2.logger.info('Demo mode: API failed, serving mocked dates', { tool: TOOL, duration_ms: Date.now() - start, error: message });
+            return { content: [{ type: 'text', text: JSON.stringify(demo, null, 2) }] };
+        }
         index_js_2.logger.error('Tool failed', { tool: TOOL, duration_ms: Date.now() - start, error: message });
         return { content: [{ type: 'text', text: `Erro ao buscar datas disponíveis: ${message}` }], isError: true };
     }

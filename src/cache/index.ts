@@ -46,4 +46,5 @@ export const TTL = {
   availableDates: 60,
   sessions: 30,
   customFields: 120,
+  scheduleIdempotency: 60,
 } as const;
