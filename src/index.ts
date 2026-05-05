@@ -17,8 +17,6 @@ import {
 import { logger } from './logger/index.js';
 
 // Tools
-import { login, loginSchema } from './tools/login.js';
-import { register, registerSchema } from './tools/register.js';
 import { listCompanies, listCompaniesSchema } from './tools/list-companies.js';
 import { getCompanyServices, getCompanyServicesSchema } from './tools/get-company-services.js';
 import { getAvailableDates, getAvailableDatesSchema } from './tools/get-available-dates.js';
@@ -27,6 +25,7 @@ import { getBookingForm, getBookingFormSchema } from './tools/get-booking-form.j
 import { scheduleAppointment, scheduleAppointmentSchema } from './tools/schedule-appointment.js';
 import { checkTicketStatus, checkTicketStatusSchema } from './tools/check-ticket-status.js';
 import { listMyTickets, listMyTicketsSchema } from './tools/list-my-tickets.js';
+import { login, loginSchema, register, registerSchema } from './tools/login.js';
 
 // Resources
 import { categoriesContent } from './resources/categories.js';
@@ -39,41 +38,6 @@ import { consultarAgendamentoPrompt } from './prompts/consultar-agendamento.js';
 
 // ─── Zod → JSON Schema helper (minimal, covers our use cases) ────────────────
 
-interface ZodDef {
-  typeName: string;
-  description?: string;
-  innerType?: { _def: ZodDef };
-  type?: { _def: ZodDef };
-  values?: string[];
-}
-
-function zodTypeToJson(def: ZodDef, description?: string): Record<string, unknown> {
-  const desc = description ?? def.description;
-  switch (def.typeName) {
-    case 'ZodNumber':
-      return { type: 'number', description: desc };
-    case 'ZodBoolean':
-      return { type: 'boolean', description: desc };
-    case 'ZodRecord':
-      return { type: 'object', additionalProperties: { type: 'string' }, description: desc };
-    case 'ZodEnum':
-      return { type: 'string', enum: def.values, description: desc };
-    case 'ZodArray':
-      return {
-        type: 'array',
-        items: def.type ? zodTypeToJson(def.type._def) : { type: 'string' },
-        description: desc,
-      };
-    case 'ZodOptional':
-    case 'ZodNullable':
-    case 'ZodDefault':
-      return def.innerType ? zodTypeToJson(def.innerType._def, desc) : { type: 'string', description: desc };
-    case 'ZodString':
-    default:
-      return { type: 'string', description: desc };
-  }
-}
-
 function zodToJsonSchema(schema: import('zod').ZodObject<import('zod').ZodRawShape>): Record<string, unknown> {
   const shape = schema.shape;
   const properties: Record<string, unknown> = {};
@@ -81,10 +45,20 @@ function zodToJsonSchema(schema: import('zod').ZodObject<import('zod').ZodRawSha
 
   for (const [key, field] of Object.entries(shape)) {
     const f = field as import('zod').ZodTypeAny;
-    const def = f._def as ZodDef;
-    properties[key] = zodTypeToJson(def);
+    const def = f._def as { typeName: string; description?: string; innerType?: { _def: { typeName: string } }; checks?: Array<{ kind: string; value?: number }> };
 
-    const isOptional = def.typeName === 'ZodOptional' || def.typeName === 'ZodDefault';
+    let type = 'string';
+    if (def.typeName === 'ZodNumber') type = 'number';
+    else if (def.typeName === 'ZodBoolean') type = 'boolean';
+    else if (def.typeName === 'ZodRecord') {
+      properties[key] = { type: 'object', additionalProperties: { type: 'string' }, description: def.description };
+      required.push(key);
+      continue;
+    }
+
+    properties[key] = { type, description: def.description };
+
+    const isOptional = def.typeName === 'ZodOptional';
     if (!isOptional) required.push(key);
   }
 
@@ -96,14 +70,12 @@ function zodToJsonSchema(schema: import('zod').ZodObject<import('zod').ZodRawSha
 const TOOLS = [
   {
     name: 'login',
-    description:
-      'Autentica o usuário no Filazero e retorna um access_token. Use o token como argumento "token" em schedule_appointment e list_my_tickets. Bloqueado em modo HTTP por padrão (use stdio com Claude Desktop).',
+    description: 'Autentica o usuário com e-mail e senha e retorna um Bearer token',
     inputSchema: zodToJsonSchema(loginSchema),
   },
   {
     name: 'register',
-    description:
-      'Cria uma nova conta no Filazero. Em demo mode retorna um access_token sintético; em produção orienta o usuário a se registrar via app.filazero.net.',
+    description: 'Cria uma nova conta com nome, e-mail e senha e retorna um Bearer token',
     inputSchema: zodToJsonSchema(registerSchema),
   },
   {
@@ -148,165 +120,87 @@ const TOOLS = [
   },
 ];
 
-// ─── Handlers (registrados num server específico) ─────────────────────────────
-
-function registerHandlers(server: Server): void {
-server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOLS }));
-
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const { name, arguments: args } = request.params;
-  const input = (args ?? {}) as Record<string, unknown>;
-
-  switch (name) {
-    case 'login':
-      return login(loginSchema.parse(input));
-
-    case 'register':
-      return register(registerSchema.parse(input));
-
-    case 'list_companies':
-      return listCompanies(listCompaniesSchema.parse(input));
-
-    case 'get_company_services':
-      return getCompanyServices(getCompanyServicesSchema.parse(input));
-
-    case 'get_available_dates':
-      return getAvailableDates(getAvailableDatesSchema.parse(input));
-
-    case 'get_available_sessions':
-      return getAvailableSessions(getAvailableSessionsSchema.parse(input));
-
-    case 'get_booking_form':
-      return getBookingForm(getBookingFormSchema.parse(input));
-
-    case 'schedule_appointment':
-      return scheduleAppointment(scheduleAppointmentSchema.parse(input));
-
-    case 'check_ticket_status':
-      return checkTicketStatus(checkTicketStatusSchema.parse(input));
-
-    case 'list_my_tickets':
-      return listMyTickets(listMyTicketsSchema.parse(input));
-
-    default:
-      return {
-        content: [{ type: 'text', text: `Tool desconhecida: ${name}` }],
-        isError: true,
-      };
-  }
-});
-
-// ─── Resources ────────────────────────────────────────────────────────────────
-
-server.setRequestHandler(ListResourcesRequestSchema, async () => ({
-  resources: [
-    {
-      uri: 'filazero://categories',
-      name: 'Categorias de Serviços',
-      description: 'Categorias de serviços disponíveis na plataforma Filazero',
-      mimeType: 'text/markdown',
-    },
-    {
-      uri: 'filazero://ticket-lifecycle',
-      name: 'Ciclo de Vida do Ticket',
-      description: 'Estados e transições de um ticket de agendamento',
-      mimeType: 'text/markdown',
-    },
-    {
-      uri: 'filazero://scheduling-flow',
-      name: 'Fluxo de Agendamento',
-      description: 'Guia completo da sequência de tools para realizar um agendamento',
-      mimeType: 'text/markdown',
-    },
-  ],
-}));
-
-server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
-  const { uri } = request.params;
-
-  const contentMap: Record<string, string> = {
-    'filazero://categories': categoriesContent,
-    'filazero://ticket-lifecycle': ticketLifecycleContent,
-    'filazero://scheduling-flow': schedulingFlowContent,
-  };
-
-  const text = contentMap[uri];
-  if (!text) {
-    throw new Error(`Resource não encontrado: ${uri}`);
-  }
-
-  return {
-    contents: [{ uri, mimeType: 'text/markdown', text }],
-  };
-});
-
-// ─── Prompts ──────────────────────────────────────────────────────────────────
-
-server.setRequestHandler(ListPromptsRequestSchema, async () => ({
-  prompts: [
-    {
-      name: agendarAtendimentoPrompt.name,
-      description: agendarAtendimentoPrompt.description,
-      arguments: agendarAtendimentoPrompt.arguments,
-    },
-    {
-      name: consultarAgendamentoPrompt.name,
-      description: consultarAgendamentoPrompt.description,
-      arguments: consultarAgendamentoPrompt.arguments,
-    },
-  ],
-}));
-
-server.setRequestHandler(GetPromptRequestSchema, async (request) => {
-  const { name, arguments: promptArgs } = request.params;
-  const args = (promptArgs ?? {}) as Record<string, string>;
-
-  if (name === agendarAtendimentoPrompt.name) {
-    return { messages: agendarAtendimentoPrompt.getMessages(args) };
-  }
-
-  if (name === consultarAgendamentoPrompt.name) {
-    return { messages: consultarAgendamentoPrompt.getMessages(args) };
-  }
-
-  throw new Error(`Prompt não encontrado: ${name}`);
-});
-}
-
 // ─── Start ────────────────────────────────────────────────────────────────────
 
 function createServer(): Server {
-  const server = new Server(
+  const s = new Server(
     { name: 'filazero-mcp', version: '1.0.0' },
-    {
-      capabilities: {
-        tools: {},
-        resources: {},
-        prompts: {},
-      },
-    },
+    { capabilities: { tools: {}, resources: {}, prompts: {} } },
   );
-  registerHandlers(server);
-  return server;
+
+  s.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOLS }));
+
+  s.setRequestHandler(CallToolRequestSchema, async (request) => {
+    const { name, arguments: args } = request.params;
+    const input = (args ?? {}) as Record<string, unknown>;
+
+    switch (name) {
+      case 'login':
+        return login(loginSchema.parse(input));
+      case 'register':
+        return register(registerSchema.parse(input));
+      case 'list_companies':
+        return listCompanies(listCompaniesSchema.parse(input));
+      case 'get_company_services':
+        return getCompanyServices(getCompanyServicesSchema.parse(input));
+      case 'get_available_dates':
+        return getAvailableDates(getAvailableDatesSchema.parse(input));
+      case 'get_available_sessions':
+        return getAvailableSessions(getAvailableSessionsSchema.parse(input));
+      case 'get_booking_form':
+        return getBookingForm(getBookingFormSchema.parse(input));
+      case 'schedule_appointment':
+        return scheduleAppointment(scheduleAppointmentSchema.parse(input));
+      case 'check_ticket_status':
+        return checkTicketStatus(checkTicketStatusSchema.parse(input));
+      case 'list_my_tickets':
+        return listMyTickets(listMyTicketsSchema.parse(input));
+      default:
+        return { content: [{ type: 'text', text: `Tool desconhecida: ${name}` }], isError: true };
+    }
+  });
+
+  s.setRequestHandler(ListResourcesRequestSchema, async () => ({
+    resources: [
+      { uri: 'filazero://categories', name: 'Categorias de Serviços', description: 'Categorias de serviços disponíveis na plataforma Filazero', mimeType: 'text/markdown' },
+      { uri: 'filazero://ticket-lifecycle', name: 'Ciclo de Vida do Ticket', description: 'Estados e transições de um ticket de agendamento', mimeType: 'text/markdown' },
+      { uri: 'filazero://scheduling-flow', name: 'Fluxo de Agendamento', description: 'Guia completo da sequência de tools para realizar um agendamento', mimeType: 'text/markdown' },
+    ],
+  }));
+
+  s.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+    const { uri } = request.params;
+    const contentMap: Record<string, string> = {
+      'filazero://categories': categoriesContent,
+      'filazero://ticket-lifecycle': ticketLifecycleContent,
+      'filazero://scheduling-flow': schedulingFlowContent,
+    };
+    const text = contentMap[uri];
+    if (!text) throw new Error(`Resource não encontrado: ${uri}`);
+    return { contents: [{ uri, mimeType: 'text/markdown', text }] };
+  });
+
+  s.setRequestHandler(ListPromptsRequestSchema, async () => ({
+    prompts: [
+      { name: agendarAtendimentoPrompt.name, description: agendarAtendimentoPrompt.description, arguments: agendarAtendimentoPrompt.arguments },
+      { name: consultarAgendamentoPrompt.name, description: consultarAgendamentoPrompt.description, arguments: consultarAgendamentoPrompt.arguments },
+    ],
+  }));
+
+  s.setRequestHandler(GetPromptRequestSchema, async (request) => {
+    const { name, arguments: promptArgs } = request.params;
+    const args = (promptArgs ?? {}) as Record<string, string>;
+    if (name === agendarAtendimentoPrompt.name) return { messages: agendarAtendimentoPrompt.getMessages(args) };
+    if (name === consultarAgendamentoPrompt.name) return { messages: consultarAgendamentoPrompt.getMessages(args) };
+    throw new Error(`Prompt não encontrado: ${name}`);
+  });
+
+  return s;
 }
 
 async function startHttp(): Promise<void> {
   const port = Number(process.env['MCP_SERVER_PORT'] ?? 3000);
   const app = express();
-
-  // CORS — necessário para o front web em outra origem
-  app.use((req, res, next) => {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, mcp-session-id, accept');
-    res.setHeader('Access-Control-Expose-Headers', 'mcp-session-id');
-    if (req.method === 'OPTIONS') {
-      res.sendStatus(204);
-      return;
-    }
-    next();
-  });
-
   app.use(express.json());
 
   // Map of sessionId → transport (stateful mode)
@@ -360,8 +254,7 @@ async function startHttp(): Promise<void> {
 
 async function startStdio(): Promise<void> {
   const transport = new StdioServerTransport();
-  const server = createServer();
-  await server.connect(transport);
+  await createServer().connect(transport);
   logger.info('Filazero MCP Server iniciado em modo stdio', { tool: 'server' });
 }
 
