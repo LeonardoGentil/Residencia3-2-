@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { fetchTicketStatus } from '../client/filazero.js';
 import { logger } from '../logger/index.js';
+import { DEMO_ENABLED, mockGetTicket } from '../mock/demo-fixtures.js';
 import type { ToolResult } from '../types/index.js';
 
 export const checkTicketStatusSchema = z.object({
@@ -34,6 +35,35 @@ function formatBR(isoUtc: string): string {
 export async function checkTicketStatus(input: CheckTicketStatusInput): Promise<ToolResult> {
   const TOOL = 'check_ticket_status';
   const start = Date.now();
+
+  // Demo mode: se a accessKey corresponde a um ticket gerado via mock,
+  // serve direto sem bater na API real.
+  if (DEMO_ENABLED) {
+    const mocked = mockGetTicket(input.accessKey);
+    if (mocked) {
+      logger.info('Demo mode: serving mocked ticket status', { tool: TOOL, duration_ms: Date.now() - start, cached: false });
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                id: mocked.id,
+                accessKey: mocked.accessKey,
+                status: mocked.status,
+                serviceName: mocked.serviceName,
+                companyName: mocked.companyName,
+                scheduledAt: formatBR(mocked.scheduledAt),
+                createdAt: formatBR(mocked.createdAt),
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+      };
+    }
+  }
 
   try {
     const raw = (await fetchTicketStatus(input.accessKey)) as RawTicket;

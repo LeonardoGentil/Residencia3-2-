@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { fetchMyTickets } from '../client/filazero.js';
 import { logger } from '../logger/index.js';
+import { DEMO_ENABLED, mockListMyTickets } from '../mock/demo-fixtures.js';
 import type { ToolResult } from '../types/index.js';
 
 export const listMyTicketsSchema = z.object({
@@ -33,6 +34,23 @@ function formatBR(isoUtc: string): string {
 export async function listMyTickets(input: ListMyTicketsInput): Promise<ToolResult> {
   const TOOL = 'list_my_tickets';
   const start = Date.now();
+
+  // Demo mode: token "demo" (ou qualquer token quando DEMO_ENABLED) recebe
+  // os tickets criados via mockCreateTicket, sem bater na API real.
+  if (DEMO_ENABLED && (input.token === 'demo' || input.token.startsWith('demo-'))) {
+    const tickets = mockListMyTickets();
+    const result = tickets.map((t) => ({
+      id: t.id,
+      accessKey: t.accessKey,
+      status: t.status,
+      serviceName: t.serviceName,
+      companyName: t.companyName,
+      scheduledAt: formatBR(t.scheduledAt),
+      createdAt: formatBR(t.createdAt),
+    }));
+    logger.info('Demo mode: serving mocked tickets', { tool: TOOL, duration_ms: Date.now() - start, cached: false });
+    return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+  }
 
   try {
     const raw = (await fetchMyTickets(input.token)) as

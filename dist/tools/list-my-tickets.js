@@ -5,6 +5,7 @@ exports.listMyTickets = listMyTickets;
 const zod_1 = require("zod");
 const filazero_js_1 = require("../client/filazero.js");
 const index_js_1 = require("../logger/index.js");
+const demo_fixtures_js_1 = require("../mock/demo-fixtures.js");
 exports.listMyTicketsSchema = zod_1.z.object({
     token: zod_1.z.string().min(1).describe('Bearer token do usuário autenticado'),
 });
@@ -21,6 +22,22 @@ function formatBR(isoUtc) {
 async function listMyTickets(input) {
     const TOOL = 'list_my_tickets';
     const start = Date.now();
+    // Demo mode: token "demo" (ou qualquer token quando DEMO_ENABLED) recebe
+    // os tickets criados via mockCreateTicket, sem bater na API real.
+    if (demo_fixtures_js_1.DEMO_ENABLED && (input.token === 'demo' || input.token.startsWith('demo-'))) {
+        const tickets = (0, demo_fixtures_js_1.mockListMyTickets)();
+        const result = tickets.map((t) => ({
+            id: t.id,
+            accessKey: t.accessKey,
+            status: t.status,
+            serviceName: t.serviceName,
+            companyName: t.companyName,
+            scheduledAt: formatBR(t.scheduledAt),
+            createdAt: formatBR(t.createdAt),
+        }));
+        index_js_1.logger.info('Demo mode: serving mocked tickets', { tool: TOOL, duration_ms: Date.now() - start, cached: false });
+        return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+    }
     try {
         const raw = (await (0, filazero_js_1.fetchMyTickets)(input.token));
         const tickets = Array.isArray(raw)

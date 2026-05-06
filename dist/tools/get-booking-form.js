@@ -6,6 +6,7 @@ const zod_1 = require("zod");
 const filazero_js_1 = require("../client/filazero.js");
 const index_js_1 = require("../cache/index.js");
 const index_js_2 = require("../logger/index.js");
+const demo_fixtures_js_1 = require("../mock/demo-fixtures.js");
 exports.getBookingFormSchema = zod_1.z.object({
     providerId: zod_1.z.number().int().positive().describe('ID do provider/empresa'),
     sessionId: zod_1.z.number().int().positive().describe('ID da sessão escolhida'),
@@ -24,6 +25,13 @@ async function getBookingForm(input) {
         const fields = Array.isArray(raw)
             ? raw
             : raw.data ?? [];
+        // Demo mode: se API real não tem form, devolve um genérico
+        if (fields.length === 0 && demo_fixtures_js_1.DEMO_ENABLED) {
+            const demo = (0, demo_fixtures_js_1.mockBookingForm)();
+            index_js_1.cache.set(cacheKey, demo, index_js_1.TTL.customFields);
+            index_js_2.logger.info('Demo mode: serving mocked form', { tool: TOOL, duration_ms: Date.now() - start, cached: false });
+            return { content: [{ type: 'text', text: JSON.stringify(demo, null, 2) }] };
+        }
         const result = fields.map((f) => ({
             name: f.name,
             label: f.label,
@@ -37,6 +45,12 @@ async function getBookingForm(input) {
     }
     catch (err) {
         const message = err instanceof Error ? err.message : String(err);
+        if (demo_fixtures_js_1.DEMO_ENABLED) {
+            const demo = (0, demo_fixtures_js_1.mockBookingForm)();
+            index_js_1.cache.set(cacheKey, demo, index_js_1.TTL.customFields);
+            index_js_2.logger.info('Demo mode: API failed, serving mocked form', { tool: TOOL, duration_ms: Date.now() - start, error: message });
+            return { content: [{ type: 'text', text: JSON.stringify(demo, null, 2) }] };
+        }
         index_js_2.logger.error('Tool failed', { tool: TOOL, duration_ms: Date.now() - start, error: message });
         return { content: [{ type: 'text', text: `Erro ao buscar formulário de agendamento: ${message}` }], isError: true };
     }

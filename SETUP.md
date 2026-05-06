@@ -109,7 +109,12 @@ MCP_TRANSPORT=http
 RATE_LIMIT_RPM=30
 CACHE_TTL_COMPANIES=300
 LOG_LEVEL=info
+ALLOW_HTTP_LOGIN=false
 ```
+
+> **Observação sobre `RATE_LIMIT_RPM`:** o limite é mantido em memória pelo processo. Se você rodar várias réplicas (ex.: nginx balanceando entre N containers), cada réplica conta separadamente — para um limite global você precisaria de Redis. Em ambiente de demo/residência, uma réplica só é o suficiente.
+
+> **Observação sobre `ALLOW_HTTP_LOGIN`:** a tool `login` aceita e-mail e senha. Em modo `stdio` (Claude Desktop local) a senha nunca sai da máquina. Em modo `http`, a senha trafega entre cliente e servidor — por isso o login é bloqueado por padrão. Só ative `ALLOW_HTTP_LOGIN=true` se você for o operador da rede e souber o que está fazendo.
 
 ---
 
@@ -199,6 +204,18 @@ Na aba **Tools**, clique em qualquer tool para testá-la.
 - Preencha: `slug` → `nome-da-empresa`
 - Clique em **Run Tool**
 
+**Exemplo — autenticar para agendar:**
+- Clique em `login`
+- Preencha: `email` e `password` da conta no Filazero
+- Clique em **Run Tool**
+- Copie o `access_token` da resposta para usar como `token` em `schedule_appointment` ou `list_my_tickets`
+
+> Em modo HTTP (que é o padrão do `docker-compose`) o login fica bloqueado. Para testar o `login`, rode em modo stdio:
+> ```bash
+> MCP_TRANSPORT=stdio npm start
+> ```
+> ou ative explicitamente: `ALLOW_HTTP_LOGIN=true`.
+
 ---
 
 ## 9. Conectar ao Claude Desktop
@@ -244,6 +261,63 @@ Reinicie o Claude Desktop. O ícone de ferramentas aparecerá no chat e você po
 
 ---
 
+## 10. Front web (opcional)
+
+Além do Claude Desktop e do MCP Inspector, o repositório inclui um cliente web próprio em `web/` — uma SPA React/Vite que conversa com o MCP usando uma IA gratuita escolhida pelo usuário (Groq, OpenRouter, Cerebras ou Google Gemini).
+
+### Subir o front (modo dev)
+
+Em outro terminal (com o servidor MCP já rodando):
+
+```bash
+cd web
+npm install
+npm run dev
+```
+
+Acesse `http://localhost:5173`.
+
+### Subir o front via Docker (junto do resto)
+
+O `docker-compose.yml` já inclui o serviço `web` que builda e serve o front em **`http://localhost:8080`**:
+
+```bash
+docker compose up --build
+```
+
+Sobe os 3 containers (mcp-server, nginx, web). O nginx do container `web` faz proxy de `/mcp` pro `mcp-server`, então a URL padrão `http://localhost:3000/mcp` funciona normalmente — ou troca pra `http://localhost:8080/mcp` se preferir tudo num host só.
+
+### Usar
+
+1. Na barra lateral, escolha um **provider de IA**.
+2. Clique em **"obter chave grátis"** (link abre o site do provider) e gere uma chave.
+3. Cole a chave no campo da barra lateral. Ela fica salva no `localStorage` do navegador — não é enviada pra ninguém.
+4. Verifique se a **bolinha verde** está acesa em "Conexão MCP" (significa conectado).
+5. Digite uma pergunta no chat, ex.: "liste as empresas disponíveis".
+
+A IA decide automaticamente quais tools chamar e mostra cada chamada em tempo real (clique no card pra ver os argumentos e o resultado).
+
+### Providers suportados
+
+| Provider | Free tier | Modelos sugeridos |
+|---|---|---|
+| Groq | grátis, rápido | Llama 3.3 70B, Llama 3.1 8B Instant |
+| OpenRouter | grátis com `:free` | DeepSeek V3, Qwen 2.5, Llama 3.3 |
+| Cerebras | grátis | Llama 3.3 70B |
+| Google Gemini | grátis (15 RPM) | Gemini 2.0 Flash |
+
+Adicionar provider novo é editar `web/src/lib/providers.ts`.
+
+### Build de produção
+
+```bash
+cd web && npm run build
+```
+
+Saída em `web/dist/` — pode servir com qualquer static host (nginx, Vercel, etc.).
+
+---
+
 ## Estrutura do projeto
 
 ```
@@ -251,7 +325,8 @@ filazero-mcp/
 ├── src/
 │   ├── index.ts                  # Entrypoint do servidor
 │   ├── client/filazero.ts        # Cliente HTTP da API Filazero
-│   ├── tools/                    # 8 tools MCP
+│   ├── tools/                    # 9 tools MCP
+│   │   ├── login.ts
 │   │   ├── list-companies.ts
 │   │   ├── get-company-services.ts
 │   │   ├── get-available-dates.ts
@@ -271,7 +346,14 @@ filazero-mcp/
 ├── nginx.conf
 ├── .env.example
 ├── package.json
-└── tsconfig.json
+├── tsconfig.json
+└── web/                          # Front web opcional (Vite + React + Tailwind)
+    ├── src/
+    │   ├── App.tsx
+    │   ├── components/           # Sidebar, Chat, ToolCallCard, etc.
+    │   └── lib/                  # mcpClient, llmClient, chatLoop, providers
+    ├── package.json
+    └── vite.config.ts
 ```
 
 ---

@@ -201,3 +201,53 @@ export async function fetchTicketStatus(accessKey: string): Promise<unknown> {
 export async function fetchMyTickets(token: string): Promise<unknown> {
   return apiFetch('/v2/ticketing/me/filtered-tickets', { bearerToken: token });
 }
+
+// ─── Login (OAuth2 password grant) ────────────────────────────────────────────
+// Endpoint /Token segue o padrão OWIN OAuth (form-urlencoded), com shape de
+// erro/sucesso diferente da API FilaZero — por isso não passa pelo apiFetch.
+
+interface OAuthTokenResponse {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  userName?: string;
+  '.expires'?: string;
+}
+
+interface OAuthErrorResponse {
+  error: string;
+  error_description?: string;
+}
+
+export async function fetchToken(email: string, password: string): Promise<OAuthTokenResponse> {
+  checkRateLimit();
+
+  const body = new URLSearchParams({
+    grant_type: 'password',
+    username: email,
+    password,
+  }).toString();
+
+  const headers: Record<string, string> = {
+    ...REQUIRED_HEADERS,
+    'Content-Type': 'application/x-www-form-urlencoded',
+  };
+
+  const res = await fetch(`${BASE_URL}/Token`, {
+    method: 'POST',
+    headers,
+    body,
+    signal: AbortSignal.timeout(10_000),
+  });
+
+  const json = (await res.json().catch(() => ({}))) as Partial<
+    OAuthTokenResponse & OAuthErrorResponse
+  >;
+
+  if (!res.ok || !json.access_token) {
+    const description = json.error_description ?? json.error ?? `Falha no login (HTTP ${res.status})`;
+    throw new Error(description);
+  }
+
+  return json as OAuthTokenResponse;
+}

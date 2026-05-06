@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { fetchAvailableSessions } from '../client/filazero.js';
 import { cache, TTL } from '../cache/index.js';
 import { logger } from '../logger/index.js';
+import { DEMO_ENABLED, mockAvailableSessions } from '../mock/demo-fixtures.js';
 import type { ToolResult } from '../types/index.js';
 
 export const getAvailableSessionsSchema = z.object({
@@ -60,6 +61,14 @@ export async function getAvailableSessions(input: GetAvailableSessionsInput): Pr
       ? raw
       : (raw as { data?: RawSession[] }).data ?? [];
 
+    // Demo mode: se API real veio vazia, injeta sessões mockadas
+    if (sessions.length === 0 && DEMO_ENABLED) {
+      const demo = mockAvailableSessions(input.date);
+      cache.set(cacheKey, demo, TTL.sessions);
+      logger.info('Demo mode: serving mocked sessions', { tool: TOOL, duration_ms: Date.now() - start, cached: false });
+      return { content: [{ type: 'text', text: JSON.stringify(demo, null, 2) }] };
+    }
+
     const result = sessions.map((s) => {
       const startRaw = s.startTime ?? s.start ?? '';
       const endRaw = s.endTime ?? s.end ?? '';
@@ -78,6 +87,12 @@ export async function getAvailableSessions(input: GetAvailableSessionsInput): Pr
     return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    if (DEMO_ENABLED) {
+      const demo = mockAvailableSessions(input.date);
+      cache.set(cacheKey, demo, TTL.sessions);
+      logger.info('Demo mode: API failed, serving mocked sessions', { tool: TOOL, duration_ms: Date.now() - start, error: message });
+      return { content: [{ type: 'text', text: JSON.stringify(demo, null, 2) }] };
+    }
     logger.error('Tool failed', { tool: TOOL, duration_ms: Date.now() - start, error: message });
     return { content: [{ type: 'text', text: `Erro ao buscar sessões disponíveis: ${message}` }], isError: true };
   }
