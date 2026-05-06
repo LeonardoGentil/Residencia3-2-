@@ -17,8 +17,8 @@ export default function EmptyState({ hasApiKey, hasMcp, onSuggestion }: EmptySta
         </div>
         <h2 className="text-base font-semibold text-gray-800 mb-1">Conectando ao MCP server</h2>
         <p className="text-sm text-gray-500 max-w-md">
-          Verifique se o servidor está rodando em <code className="bg-gray-100 px-1.5 py-0.5 rounded text-xs">http://localhost:3000</code>.
-          Se o erro persistir, suba com <code className="bg-gray-100 px-1.5 py-0.5 rounded text-xs">docker compose up</code> ou <code className="bg-gray-100 px-1.5 py-0.5 rounded text-xs">node dist/index.js</code>.
+          Verifique se o servidor está rodando. Se o erro persistir, suba com{' '}
+          <code className="bg-gray-100 px-1.5 py-0.5 rounded text-xs">docker compose up</code>.
         </p>
       </div>
     );
@@ -34,8 +34,7 @@ export default function EmptyState({ hasApiKey, hasMcp, onSuggestion }: EmptySta
         </div>
         <h2 className="text-base font-semibold text-gray-800 mb-1">Configure sua chave de IA</h2>
         <p className="text-sm text-gray-500 max-w-md mb-2">
-          Cole no painel à esquerda uma chave gratuita do provider escolhido.
-          Ela fica salva só no seu navegador.
+          Cole no painel à esquerda uma chave gratuita do provider escolhido. Ela fica salva só no seu navegador.
         </p>
       </div>
     );

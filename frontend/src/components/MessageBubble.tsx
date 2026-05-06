@@ -6,7 +6,7 @@ interface MessageBubbleProps {
 }
 
 export default function MessageBubble({ message }: MessageBubbleProps) {
-  if (message.role === 'tool') return null; // resultados aparecem dentro do ToolCallCard
+  if (message.role === 'tool') return null;
 
   if (message.role === 'user') {
     return (
@@ -18,7 +18,6 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
     );
   }
 
-  // assistant: pode ter texto + tool calls
   return (
     <div className="flex justify-start">
       <div className="max-w-[85%] space-y-2">

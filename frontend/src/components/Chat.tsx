@@ -14,22 +14,13 @@ interface ChatProps {
   setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
 }
 
-export default function Chat({
-  provider,
-  apiKey,
-  modelId,
-  conn,
-  systemPrompt,
-  messages,
-  setMessages,
-}: ChatProps) {
+export default function Chat({ provider, apiKey, modelId, conn, systemPrompt, messages, setMessages }: ChatProps) {
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Auto-scroll só se já estávamos no fim
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -37,7 +28,6 @@ export default function Chat({
     if (nearBottom) el.scrollTop = el.scrollHeight;
   }, [messages]);
 
-  // Atalho Ctrl/Cmd+K
   useEffect(() => {
     function onKey(e: globalThis.KeyboardEvent) {
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
@@ -60,38 +50,18 @@ export default function Chat({
 
       try {
         await runChatLoop({
-          provider,
-          apiKey,
-          model: modelId,
-          conn,
-          systemPrompt,
-          history: messages,
-          userInput: trimmed,
+          provider, apiKey, model: modelId, conn, systemPrompt, history: messages, userInput: trimmed,
           onMessage: (m) => setMessages((prev) => [...prev, m]),
           onToolCallStart: (call, msgId) => {
             setMessages((prev) =>
-              prev.map((m) =>
-                m.id === msgId
-                  ? {
-                      ...m,
-                      toolCalls: m.toolCalls?.map((tc) => (tc.id === call.id ? { ...tc } : tc)),
-                    }
-                  : m,
-              ),
+              prev.map((m) => m.id === msgId ? { ...m, toolCalls: m.toolCalls?.map((tc) => (tc.id === call.id ? { ...tc } : tc)) } : m),
             );
           },
           onToolCallEnd: (call, msgId) => {
             setMessages((prev) =>
               prev.map((m) =>
                 m.id === msgId
-                  ? {
-                      ...m,
-                      toolCalls: m.toolCalls?.map((tc) =>
-                        tc.id === call.id
-                          ? { ...tc, status: call.status, result: call.result, durationMs: call.durationMs }
-                          : tc,
-                      ),
-                    }
+                  ? { ...m, toolCalls: m.toolCalls?.map((tc) => tc.id === call.id ? { ...tc, status: call.status, result: call.result, durationMs: call.durationMs } : tc) }
                   : m,
               ),
             );
@@ -99,22 +69,14 @@ export default function Chat({
         });
       } catch (e) {
         const raw = e instanceof Error ? e.message : String(e);
-        // Detecta status no formato "LLM 429: ..." gerado pelo llmClient
         const statusMatch = raw.match(/^LLM (\d+):/);
         const status = statusMatch ? Number(statusMatch[1]) : 0;
 
         let hint = '';
-        if (status === 429) {
-          hint =
-            ' — modelo saturado. Troque o modelo na sidebar (evite Llama 3.3 70B no OpenRouter, é o mais concorrido) ou troque pra Groq, que tem free tier mais robusto.';
-        } else if (status === 404 && /model/i.test(raw)) {
-          hint =
-            ' — esse ID de modelo não existe nesse provider. Escolha outro modelo no dropdown.';
-        } else if (status === 401 || status === 403) {
-          hint = ' — chave da API inválida ou expirada. Gere uma nova no link "obter chave grátis".';
-        } else if (status === 400) {
-          hint = ' — request rejeitada pelo provider. Pode ser que o modelo escolhido não suporte tool calling.';
-        }
+        if (status === 429) hint = ' — modelo saturado. Troque o modelo na sidebar ou use Groq.';
+        else if (status === 404 && /model/i.test(raw)) hint = ' — ID de modelo inválido. Escolha outro no dropdown.';
+        else if (status === 401 || status === 403) hint = ' — chave da API inválida ou expirada.';
+        else if (status === 400) hint = ' — request rejeitada. Modelo pode não suportar tool calling.';
 
         setError(raw + hint);
       } finally {
@@ -176,13 +138,7 @@ export default function Chat({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKey}
-            placeholder={
-              ready
-                ? 'Pergunte algo… (Enter pra enviar, Shift+Enter pra quebrar linha)'
-                : !hasMcp
-                ? 'Aguardando conexão com o MCP…'
-                : 'Cole sua chave de IA na barra lateral pra começar'
-            }
+            placeholder={ready ? 'Pergunte algo… (Enter pra enviar, Shift+Enter pra quebrar linha)' : !hasMcp ? 'Aguardando conexão com o MCP…' : 'Cole sua chave de IA na barra lateral pra começar'}
             disabled={!ready || busy}
             rows={1}
             className="flex-1 resize-none border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50 max-h-32"

@@ -24,10 +24,7 @@ export default function AuthPage({ conn, connecting, connError, onAuthenticated 
   function extractToken(text: string): { token: string | null; email: string | null } {
     try {
       const json = JSON.parse(text);
-      return {
-        token: json.access_token ?? null,
-        email: json.userName ?? json.email ?? null,
-      };
+      return { token: json.access_token ?? null, email: json.userName ?? json.email ?? null };
     } catch {
       return { token: null, email: null };
     }
@@ -39,10 +36,7 @@ export default function AuthPage({ conn, connecting, connError, onAuthenticated 
     setLoading(true);
     setError(null);
     try {
-      const args =
-        mode === 'login'
-          ? { email, password }
-          : { email, password, name };
+      const args = mode === 'login' ? { email, password } : { email, password, name };
       const result = await callTool(conn, mode, args);
       const text = result.content.map((c) => c.text ?? '').join('\n');
       if (result.isError) throw new Error(text);
@@ -61,12 +55,7 @@ export default function AuthPage({ conn, connecting, connError, onAuthenticated 
     setLoading(true);
     setError(null);
     try {
-      // Em demo mode o servidor aceita qualquer email/senha. Em produção,
-      // isso exigiria OAuth real do Google — ainda fora de escopo da residência.
-      const result = await callTool(conn, 'login', {
-        email: GOOGLE_DEMO_EMAIL,
-        password: 'demo-google',
-      });
+      const result = await callTool(conn, 'login', { email: GOOGLE_DEMO_EMAIL, password: 'demo-google' });
       const text = result.content.map((c) => c.text ?? '').join('\n');
       if (result.isError) throw new Error(text);
       const { token } = extractToken(text);
@@ -94,13 +83,8 @@ export default function AuthPage({ conn, connecting, connError, onAuthenticated 
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-          {/* Status da conexão MCP */}
           <div className="flex items-center gap-2 mb-4 text-xs">
-            <div
-              className={`w-2 h-2 rounded-full ${
-                conn ? 'bg-green-500' : connecting ? 'bg-yellow-400 animate-pulse-soft' : 'bg-red-500'
-              }`}
-            />
+            <div className={`w-2 h-2 rounded-full ${conn ? 'bg-green-500' : connecting ? 'bg-yellow-400 animate-pulse-soft' : 'bg-red-500'}`} />
             <span className="text-gray-600">
               {conn
                 ? `Conectado · ${conn.tools.filter((t) => t.name !== 'login' && t.name !== 'register').length} tools`
@@ -110,29 +94,23 @@ export default function AuthPage({ conn, connecting, connError, onAuthenticated 
             </span>
           </div>
 
-          {/* Toggle login/register */}
           <div className="flex bg-gray-100 rounded-lg p-1 mb-5">
             <button
               type="button"
               onClick={() => setMode('login')}
-              className={`flex-1 py-1.5 text-sm rounded-md transition-colors ${
-                mode === 'login' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'
-              }`}
+              className={`flex-1 py-1.5 text-sm rounded-md transition-colors ${mode === 'login' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
             >
               Entrar
             </button>
             <button
               type="button"
               onClick={() => setMode('register')}
-              className={`flex-1 py-1.5 text-sm rounded-md transition-colors ${
-                mode === 'register' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'
-              }`}
+              className={`flex-1 py-1.5 text-sm rounded-md transition-colors ${mode === 'register' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
             >
               Criar conta
             </button>
           </div>
 
-          {/* Botão Google */}
           <button
             type="button"
             onClick={continueWithGoogle}
@@ -154,55 +132,32 @@ export default function AuthPage({ conn, connecting, connError, onAuthenticated 
             <hr className="flex-1 border-gray-200" />
           </div>
 
-          {/* Form email/senha */}
           <form onSubmit={submitEmailFlow} className="space-y-3">
             {mode === 'register' && (
               <div>
                 <label className="text-xs font-medium text-gray-700 block mb-1.5">Nome completo</label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Seu nome"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  autoComplete="name"
-                />
+                <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Seu nome"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" autoComplete="name" />
               </div>
             )}
             <div>
               <label className="text-xs font-medium text-gray-700 block mb-1.5">E-mail</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="seu@email.com"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                autoComplete="email"
-              />
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seu@email.com"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" autoComplete="email" />
             </div>
             <div>
               <label className="text-xs font-medium text-gray-700 block mb-1.5">Senha</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••"
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-              />
+                autoComplete={mode === 'login' ? 'current-password' : 'new-password'} />
             </div>
 
             {error && (
-              <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                {error}
-              </p>
+              <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
             )}
 
-            <button
-              type="submit"
-              disabled={submitDisabled}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            >
+            <button type="submit" disabled={submitDisabled}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
               {loading ? 'Aguarde…' : mode === 'login' ? 'Entrar' : 'Criar conta'}
             </button>
           </form>

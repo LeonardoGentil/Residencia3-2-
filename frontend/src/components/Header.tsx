@@ -23,16 +23,11 @@ export default function Header({ connected, toolCount, authEmail, onLogout, onSw
 
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2 text-xs">
-          <div
-            className={`w-2 h-2 rounded-full ${
-              connected ? 'bg-green-500' : 'bg-gray-400 animate-pulse-soft'
-            }`}
-          />
+          <div className={`w-2 h-2 rounded-full ${connected ? 'bg-green-500' : 'bg-gray-400 animate-pulse-soft'}`} />
           <span className="text-gray-600">
             {connected ? `${toolCount} tools conectadas` : 'Conectando ao MCP…'}
           </span>
         </div>
-
         {authEmail && (
           <AccountMenu email={authEmail} onLogout={onLogout} onSwitchAccount={onSwitchAccount} />
         )}

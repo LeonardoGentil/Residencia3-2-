@@ -9,21 +9,10 @@ interface McpStatusProps {
   onReconnect: () => void;
 }
 
-export default function McpStatus({
-  url,
-  onUrlChange,
-  conn,
-  connecting,
-  error,
-  onReconnect,
-}: McpStatusProps) {
+export default function McpStatus({ url, onUrlChange, conn, connecting, error, onReconnect }: McpStatusProps) {
   const status: 'ok' | 'connecting' | 'error' = conn ? 'ok' : connecting ? 'connecting' : 'error';
   const dotColor =
-    status === 'ok'
-      ? 'bg-green-500'
-      : status === 'connecting'
-      ? 'bg-yellow-400 animate-pulse-soft'
-      : 'bg-red-500';
+    status === 'ok' ? 'bg-green-500' : status === 'connecting' ? 'bg-yellow-400 animate-pulse-soft' : 'bg-red-500';
 
   return (
     <div className="space-y-2">
@@ -48,19 +37,13 @@ export default function McpStatus({
               : 'Desconectado'}
           </span>
         </div>
-        <button
-          onClick={onReconnect}
-          disabled={connecting}
-          className="text-xs text-blue-600 hover:underline disabled:opacity-50"
-        >
+        <button onClick={onReconnect} disabled={connecting} className="text-xs text-blue-600 hover:underline disabled:opacity-50">
           reconectar
         </button>
       </div>
 
       {error && (
-        <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-          {error}
-        </p>
+        <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
       )}
     </div>
   );
