@@ -6,35 +6,73 @@ Desenvolvido para a **Residência em Software III — Universidade Tiradentes (U
 
 ---
 
-## Antes de começar — o que você precisa instalar
+## O que você vai precisar instalar
 
 ### 1. Node.js
-Acesse [nodejs.org](https://nodejs.org), baixe a versão **LTS** e instale normalmente.
 
-Para confirmar que instalou certo, abra o terminal e rode:
+**Windows**
+Acesse [nodejs.org](https://nodejs.org), baixe a versão **LTS** e instale normalmente (clique em Next em tudo).
+
+**Mac**
 ```bash
-node --version
+brew install node@20
 ```
-Deve aparecer algo como `v20.x.x`.
+
+**Linux (Ubuntu/Debian)**
+```bash
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt-get install -y nodejs
+```
+
+Confirme a instalação:
+```bash
+node --version   # deve mostrar v20.x.x
+npm --version    # deve mostrar 10.x.x
+```
 
 ---
 
 ### 2. Docker Desktop
+
+**Windows e Mac**
 Acesse [docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop), baixe e instale.
 
-Depois de instalar, **abra o Docker Desktop** e deixe ele rodando em segundo plano (ele precisa estar aberto para funcionar).
+> No Windows, o instalador vai pedir para habilitar o WSL2 — aceite e reinicie o computador se solicitado.
 
-Para confirmar:
+**Linux (Ubuntu/Debian)**
 ```bash
-docker --version
+sudo apt-get update
+sudo apt-get install -y docker.io docker-compose-plugin
+sudo usermod -aG docker $USER
+newgrp docker
+```
+
+Depois de instalar, **abra o Docker Desktop** e deixe rodando em segundo plano — ele precisa estar aberto para funcionar.
+
+Confirme a instalação:
+```bash
+docker --version          # deve mostrar Docker version 24.x ou superior
+docker compose version    # deve mostrar Docker Compose version v2.x
 ```
 
 ---
 
 ### 3. Git
-Acesse [git-scm.com/downloads](https://git-scm.com/downloads), baixe e instale.
 
-Para confirmar:
+**Windows**
+Acesse [git-scm.com/downloads](https://git-scm.com/downloads), baixe e instale (clique em Next em tudo).
+
+**Mac**
+```bash
+brew install git
+```
+
+**Linux**
+```bash
+sudo apt-get install -y git
+```
+
+Confirme:
 ```bash
 git --version
 ```
@@ -43,7 +81,7 @@ git --version
 
 ## Baixando o projeto
 
-Com o terminal aberto na pasta onde você quer salvar o projeto, rode:
+Abra o terminal na pasta onde quer salvar o projeto e rode:
 
 ```bash
 git clone https://github.com/LeonardoGentil/Residencia3-2-
@@ -59,20 +97,31 @@ Esses comandos só precisam ser rodados **uma vez**:
 ```bash
 npm install
 npm run build
+```
+
+Agora crie o arquivo de configuração a partir do exemplo:
+
+**Mac/Linux:**
+```bash
 cp .env.example .env
 ```
 
-> No Windows, se o `cp` não funcionar, use: `copy .env.example .env`
+**Windows:**
+```
+copy .env.example .env
+```
+
+> O `.env` já vem com os valores corretos para rodar — não precisa alterar nada.
 
 ---
 
 ## Como usar
 
-Escolha uma das duas opções abaixo:
+Escolha uma das duas opções:
 
 ---
 
-### Opção A — Interface web (mais simples)
+### Opção A — Interface web (mais simples, requer Docker)
 
 Sobe o servidor e a interface com um comando só:
 
@@ -85,11 +134,11 @@ Aguarde aparecer a mensagem:
 mcp-server-1 | Filazero MCP Server iniciado em modo HTTP na porta 3000
 ```
 
-Depois abra o navegador e acesse **http://localhost**.
+Abra o navegador e acesse **http://localhost**.
 
-Faça login com qualquer e-mail e senha (modo demo) e pode começar a usar.
+Faça login com qualquer e-mail e senha (modo demo) e comece a usar.
 
-**Para parar**, pressione `Ctrl + C` no terminal e rode:
+**Para parar:**
 ```bash
 docker compose down
 ```
@@ -101,9 +150,9 @@ docker compose up --build
 
 ---
 
-### Opção B — Claude Desktop
+### Opção B — Claude Desktop (sem navegador, sem Docker)
 
-Com o Claude Desktop você conversa direto pelo app do Claude, sem precisar abrir o navegador.
+Com o Claude Desktop você conversa direto pelo app do Claude.
 
 **1.** Instale o Claude Desktop em [claude.ai/download](https://claude.ai/download).
 
@@ -118,4 +167,67 @@ Esse comando configura o Claude Desktop automaticamente para encontrar o servido
 
 O ícone de ferramentas vai aparecer na caixa de texto — pronto, está funcionando.
 
-> Nessa opção não precisa do Docker rodando.
+---
+
+## Verificando se está funcionando (Opção A)
+
+Com o Docker rodando, abra outro terminal e rode:
+
+```bash
+curl http://localhost:3000/health
+```
+
+Resposta esperada:
+```json
+{"status":"ok","server":"filazero-mcp"}
+```
+
+---
+
+## Solução de problemas
+
+**Porta 3000 já em uso:**
+
+Windows — abra o Gerenciador de Tarefas, encontre o processo usando a porta e encerre-o.
+
+Mac/Linux:
+```bash
+kill $(lsof -t -i:3000)
+```
+
+**Erro de permissão no Docker (Linux):**
+```bash
+sudo usermod -aG docker $USER
+newgrp docker
+```
+
+**Docker Desktop não encontrado (Windows):** certifique-se de que o Docker Desktop está aberto e com o ícone aparecendo na bandeja do sistema (canto inferior direito).
+
+**Recompilar após mudanças no código:**
+```bash
+npm run build
+docker compose up --build
+```
+
+---
+
+## Estrutura do projeto
+
+```
+Residencia3-2-/
+├── src/
+│   ├── index.ts                  # Entrypoint do servidor
+│   ├── client/filazero.ts        # Cliente HTTP da API Filazero
+│   ├── tools/                    # Tools MCP (login, agendamento, consulta)
+│   ├── resources/                # Recursos estáticos (guias, categorias)
+│   ├── prompts/                  # Prompts guiados de agendamento
+│   ├── cache/                    # Cache em memória com TTL
+│   ├── logger/                   # Logs JSON estruturados
+│   └── types/                    # Tipos TypeScript
+├── frontend/                     # Interface web (servida via Docker)
+├── dist/                         # Código compilado (gerado pelo npm run build)
+├── Dockerfile
+├── docker-compose.yml
+├── .env.example
+└── package.json
+```
