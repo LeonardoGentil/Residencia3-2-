@@ -311,7 +311,11 @@ export async function runChatLoop(opts: ChatLoopOptions): Promise<void> {
 function safeParseArgs(raw: string): Record<string, unknown> {
   if (!raw) return {};
   try {
-    return JSON.parse(raw) as Record<string, unknown>;
+    const parsed = JSON.parse(raw);
+    if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+    return {};
   } catch {
     return { _raw: raw };
   }

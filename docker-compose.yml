@@ -20,13 +20,3 @@ services:
     depends_on:
       - mcp-server
     restart: unless-stopped
-
-  # Front web (Vite + React build estático servido por nginx).
-  # Acessível em http://localhost:8080 — o front faz proxy de /mcp pro mcp-server.
-  web:
-    build: ./web
-    ports:
-      - "8080:80"
-    depends_on:
-      - mcp-server
-    restart: unless-stopped

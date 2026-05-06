@@ -9,9 +9,7 @@ interface AccountMenuProps {
 function initials(email: string): string {
   const local = email.split('@')[0] ?? email;
   const parts = local.split(/[._-]+/).filter(Boolean);
-  if (parts.length >= 2) {
-    return `${parts[0]?.[0] ?? ''}${parts[1]?.[0] ?? ''}`.toUpperCase();
-  }
+  if (parts.length >= 2) return `${parts[0]?.[0] ?? ''}${parts[1]?.[0] ?? ''}`.toUpperCase();
   return local.slice(0, 2).toUpperCase();
 }
 
@@ -21,9 +19,7 @@ export default function AccountMenu({ email, onLogout, onSwitchAccount }: Accoun
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     }
     function handleEsc(e: KeyboardEvent) {
       if (e.key === 'Escape') setOpen(false);
@@ -60,19 +56,14 @@ export default function AccountMenu({ email, onLogout, onSwitchAccount }: Accoun
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-[10px] text-gray-400 uppercase tracking-wide">Logado como</div>
-                <div className="text-sm text-gray-800 truncate" title={email}>
-                  {email}
-                </div>
+                <div className="text-sm text-gray-800 truncate" title={email}>{email}</div>
               </div>
             </div>
           </div>
 
           <div className="py-1">
             <button
-              onClick={() => {
-                setOpen(false);
-                onSwitchAccount();
-              }}
+              onClick={() => { setOpen(false); onSwitchAccount(); }}
               className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
             >
               <svg className="w-4 h-4 text-gray-500" viewBox="0 0 24 24" fill="currentColor">
@@ -81,10 +72,7 @@ export default function AccountMenu({ email, onLogout, onSwitchAccount }: Accoun
               Trocar de conta
             </button>
             <button
-              onClick={() => {
-                setOpen(false);
-                onLogout();
-              }}
+              onClick={() => { setOpen(false); onLogout(); }}
               className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">

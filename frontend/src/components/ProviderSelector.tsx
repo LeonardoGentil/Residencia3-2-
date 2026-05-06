@@ -12,25 +12,15 @@ interface ProviderSelectorProps {
   onModelChange: (id: string) => void;
 }
 
-export default function ProviderSelector({
-  providerId,
-  modelId,
-  apiKey,
-  onProviderChange,
-  onModelChange,
-}: ProviderSelectorProps) {
+export default function ProviderSelector({ providerId, modelId, apiKey, onProviderChange, onModelChange }: ProviderSelectorProps) {
   const provider = getProvider(providerId);
   const [remoteModels, setRemoteModels] = useState<RemoteModel[] | null>(null);
   const [loadingModels, setLoadingModels] = useState(false);
 
-  // Toda vez que a chave (ou provider) muda, busca a lista de modelos que
-  // a chave tem acesso de fato. Falha silenciosa cai pro fallback hardcoded.
   useEffect(() => {
     let cancelled = false;
     setRemoteModels(null);
-
     if (!apiKey) return;
-
     setLoadingModels(true);
     listModels(provider.baseUrl, apiKey)
       .then((models) => {
@@ -40,18 +30,11 @@ export default function ProviderSelector({
       .finally(() => {
         if (!cancelled) setLoadingModels(false);
       });
-
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [provider.baseUrl, apiKey]);
 
-  // Mescla: se o catálogo remoto retornou, usa ele; senão usa o fallback
-  // hardcoded em providers.ts.
   const optionsToShow: ProviderModel[] =
-    remoteModels !== null
-      ? remoteModels.map((m) => ({ id: m.id, label: m.label }))
-      : provider.models;
+    remoteModels !== null ? remoteModels.map((m) => ({ id: m.id, label: m.label })) : provider.models;
 
   return (
     <div className="space-y-3">

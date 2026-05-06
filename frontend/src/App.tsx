@@ -27,6 +27,7 @@ Você tem acesso a tools para autenticar (login), listar empresas, ver serviços
 
 Regras:
 - Sempre responda em português brasileiro.
+- NUNCA escreva chamadas de função como texto puro na resposta (ex: sintaxe de XML/JSON com nome de tool, blocos de código com tool call). Use APENAS o mecanismo nativo de tool calling. Se quiser chamar uma tool, chame-a diretamente — nunca a imprima como texto.
 
 PRINCÍPIO DE MÍNIMO ESFORÇO (mais importante que qualquer outra regra):
 - Faça O MÍNIMO de tool calls necessárias pra responder o que o usuário pediu nesta mensagem.
@@ -154,7 +155,7 @@ export default function App() {
         connected={!!conn}
         toolCount={conn?.tools.filter((t) => t.name !== 'login' && t.name !== 'register').length ?? 0}
         authEmail={authEmail}
-        onLogout={handleLogout}
+onLogout={handleLogout}
         onSwitchAccount={handleLogout}
       />
       <div className="flex-1 flex overflow-hidden">

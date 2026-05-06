@@ -19,10 +19,7 @@ export default class ErrorBoundary extends Component<Props, State> {
             <pre className="text-xs text-left bg-red-50 border border-red-200 rounded p-3 overflow-auto max-h-48 whitespace-pre-wrap break-words">
               {this.state.error.message}
             </pre>
-            <button
-              onClick={() => window.location.reload()}
-              className="text-sm bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-            >
+            <button onClick={() => window.location.reload()} className="text-sm bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
               Recarregar
             </button>
           </div>

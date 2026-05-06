@@ -14,12 +14,7 @@ export default function ApiKeyField({ value, onChange, signupUrl, providerName }
     <div>
       <div className="flex items-center justify-between mb-1.5">
         <label className="text-xs font-medium text-gray-700">Chave da API</label>
-        <a
-          href={signupUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs text-blue-600 hover:underline"
-        >
+        <a href={signupUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">
           Obter chave grátis ↗
         </a>
       </div>

@@ -29,9 +29,7 @@ export default function Sidebar(props: SidebarProps) {
     <aside className="w-80 bg-white border-r border-gray-200 flex flex-col h-full overflow-y-auto chat-scroll">
       <div className="p-5 space-y-5">
         <section>
-          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
-            Conexão MCP
-          </h2>
+          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Conexão MCP</h2>
           <McpStatus
             url={props.mcpUrl}
             onUrlChange={props.onMcpUrlChange}
@@ -45,9 +43,7 @@ export default function Sidebar(props: SidebarProps) {
         <hr className="border-gray-100" />
 
         <section>
-          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
-            IA
-          </h2>
+          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">IA</h2>
           <ProviderSelector
             providerId={props.providerId}
             modelId={props.modelId}
@@ -68,16 +64,10 @@ export default function Sidebar(props: SidebarProps) {
           <>
             <hr className="border-gray-100" />
             <section>
-              <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                Tools disponíveis
-              </h2>
+              <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Tools disponíveis</h2>
               <ul className="space-y-1">
                 {props.conn.tools.filter((t) => t.name !== 'login' && t.name !== 'register').map((t) => (
-                  <li
-                    key={t.name}
-                    className="text-xs text-gray-600 bg-gray-50 rounded px-2 py-1 font-mono truncate"
-                    title={t.description}
-                  >
+                  <li key={t.name} className="text-xs text-gray-600 bg-gray-50 rounded px-2 py-1 font-mono truncate" title={t.description}>
                     {t.name}
                   </li>
                 ))}
@@ -94,16 +84,10 @@ export default function Sidebar(props: SidebarProps) {
             {props.authEmail}
           </div>
         )}
-        <button
-          onClick={props.onClearChat}
-          className="w-full text-xs text-gray-600 hover:text-gray-900 border border-gray-200 hover:border-gray-300 rounded-lg py-2 transition-colors"
-        >
+        <button onClick={props.onClearChat} className="w-full text-xs text-gray-600 hover:text-gray-900 border border-gray-200 hover:border-gray-300 rounded-lg py-2 transition-colors">
           Limpar conversa
         </button>
-        <button
-          onClick={props.onLogout}
-          className="w-full text-xs text-red-600 hover:text-red-700 border border-red-200 hover:border-red-300 rounded-lg py-2 transition-colors"
-        >
+        <button onClick={props.onLogout} className="w-full text-xs text-red-600 hover:text-red-700 border border-red-200 hover:border-red-300 rounded-lg py-2 transition-colors">
           Sair
         </button>
       </div>
