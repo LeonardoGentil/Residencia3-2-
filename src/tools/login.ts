@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { randomUUID } from 'node:crypto';
+import { fetchToken } from '../client/filazero.js';
+import { DEMO_ENABLED, mockLogin } from '../mock/demo-fixtures.js';
 import { logger } from '../logger/index.js';
 import type { ToolResult } from '../types/index.js';
 
@@ -21,15 +22,27 @@ export async function login(input: LoginInput): Promise<ToolResult> {
   const TOOL = 'login';
   const start = Date.now();
 
-  try {
-    const token = `demo-${randomUUID()}`;
-    logger.info('Tool executed successfully', { tool: TOOL, duration_ms: Date.now() - start, cached: false });
-
+  if (DEMO_ENABLED) {
+    const mock = mockLogin(input.email);
+    logger.info('Demo mode: returning mock token', { tool: TOOL, duration_ms: Date.now() - start, cached: false });
     return {
       content: [
         {
           type: 'text',
-          text: JSON.stringify({ access_token: token, userName: input.email, email: input.email }),
+          text: JSON.stringify({ access_token: mock.access_token, userName: mock.userName, email: input.email }),
+        },
+      ],
+    };
+  }
+
+  try {
+    const tokenData = await fetchToken(input.email, input.password);
+    logger.info('Tool executed successfully', { tool: TOOL, duration_ms: Date.now() - start, cached: false });
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify({ access_token: tokenData.access_token, userName: tokenData.userName ?? input.email, email: input.email }),
         },
       ],
     };
@@ -45,14 +58,13 @@ export async function register(input: RegisterInput): Promise<ToolResult> {
   const start = Date.now();
 
   try {
-    const token = `demo-${randomUUID()}`;
+    const mock = mockLogin(input.email);
     logger.info('Tool executed successfully', { tool: TOOL, duration_ms: Date.now() - start, cached: false });
-
     return {
       content: [
         {
           type: 'text',
-          text: JSON.stringify({ access_token: token, userName: input.email, email: input.email }),
+          text: JSON.stringify({ access_token: mock.access_token, userName: input.name, email: input.email }),
         },
       ],
     };
