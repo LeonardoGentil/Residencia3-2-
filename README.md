@@ -53,7 +53,10 @@ docker compose up --build
 
 Aguarde a mensagem `Filazero MCP Server iniciado em modo HTTP na porta 3000` e acesse **http://localhost** no navegador.
 
-Para parar: `docker compose down`
+Para parar, pressione `Ctrl + C` no terminal e depois rode:
+```bash
+docker compose down
+```
 
 ---
 
@@ -64,14 +67,3 @@ npm run setup
 ```
 
 Reinicie o Claude Desktop. O ícone de ferramentas vai aparecer na caixa de texto.
-
----
-
-## Problemas comuns
-
-**Porta 3000 em uso**
-- Windows: encerre o processo no Gerenciador de Tarefas
-- Linux: `kill $(lsof -t -i:3000)`
-
-**Docker não encontrado**
-Certifique-se de que o Docker Desktop está aberto (ícone na bandeja do sistema).
