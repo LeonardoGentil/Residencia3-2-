@@ -3,34 +3,112 @@
 body {
   font-family: 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #020617;
 }
 
-/* Animação spinner usado no ToolCallCard */
+/* ── Typing indicator ───────────────────────────────── */
+@keyframes bounce-dot {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.35; }
+  40% { transform: translateY(-5px); opacity: 1; }
+}
+.dot-1 { animation: bounce-dot 1.2s ease-in-out infinite 0s; }
+.dot-2 { animation: bounce-dot 1.2s ease-in-out infinite 0.18s; }
+.dot-3 { animation: bounce-dot 1.2s ease-in-out infinite 0.36s; }
+
+/* ── Spinner ────────────────────────────────────────── */
 @keyframes spin-slow {
   from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  to   { transform: rotate(360deg); }
 }
-.animate-spin-slow {
-  animation: spin-slow 1.4s linear infinite;
-}
+.animate-spin-slow { animation: spin-slow 1.4s linear infinite; }
 
-/* Pulse sutil pra status do MCP conectando */
+/* ── Soft pulse ─────────────────────────────────────── */
 @keyframes pulse-soft {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 1; }
+  0%, 100% { opacity: 0.5; }
+  50%       { opacity: 1; }
 }
-.animate-pulse-soft {
-  animation: pulse-soft 1.6s ease-in-out infinite;
+.animate-pulse-soft { animation: pulse-soft 1.6s ease-in-out infinite; }
+
+/* ── Fade-in para mensagens ─────────────────────────── */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in-up { animation: fade-in-up 0.24s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+
+/* ── Floating orbs ──────────────────────────────────── */
+@keyframes float-orb-1 {
+  0%, 100% { transform: translate(0px, 0px) scale(1); }
+  25%       { transform: translate(50px, -40px) scale(1.06); }
+  50%       { transform: translate(25px, 55px) scale(0.97); }
+  75%       { transform: translate(-40px, 25px) scale(1.04); }
+}
+@keyframes float-orb-2 {
+  0%, 100% { transform: translate(0px, 0px) scale(1); }
+  25%       { transform: translate(-50px, 30px) scale(0.96); }
+  50%       { transform: translate(-25px, -45px) scale(1.05); }
+  75%       { transform: translate(45px, -20px) scale(0.98); }
+}
+.animate-orb-1 { animation: float-orb-1 20s ease-in-out infinite; }
+.animate-orb-2 { animation: float-orb-2 26s ease-in-out infinite; }
+
+/* ── Expanding rings (empty state) ─────────────────── */
+@keyframes expand-ring {
+  0%   { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(2.8); opacity: 0; }
+}
+.animate-ring-1 { animation: expand-ring 3.2s ease-out infinite; }
+.animate-ring-2 { animation: expand-ring 3.2s ease-out infinite 1.06s; }
+.animate-ring-3 { animation: expand-ring 3.2s ease-out infinite 2.13s; }
+
+/* ── Shimmer no botão primário ──────────────────────── */
+@keyframes shimmer-slide {
+  from { transform: translateX(-150%) skewX(-15deg); }
+  to   { transform: translateX(250%) skewX(-15deg); }
+}
+.btn-primary {
+  position: relative;
+  overflow: hidden;
+}
+.btn-primary::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.12) 50%,
+    transparent 70%
+  );
+  transform: translateX(-150%) skewX(-15deg);
+}
+.btn-primary:hover:not(:disabled)::after {
+  animation: shimmer-slide 0.65s ease forwards;
 }
 
-/* Scrollbar discreta no chat */
-.chat-scroll::-webkit-scrollbar {
-  width: 8px;
+/* ── Glow no avatar do assistente ──────────────────── */
+@keyframes avatar-glow {
+  0%, 100% { box-shadow: 0 0 8px 1px rgba(59, 130, 246, 0.35); }
+  50%       { box-shadow: 0 0 18px 3px rgba(59, 130, 246, 0.55); }
 }
+.animate-avatar-glow { animation: avatar-glow 3s ease-in-out infinite; }
+
+/* ── Scrollbar ──────────────────────────────────────── */
+.chat-scroll::-webkit-scrollbar { width: 4px; }
+.chat-scroll::-webkit-scrollbar-track { background: transparent; }
 .chat-scroll::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.12);
-  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
 }
 .chat-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+/* ── Gradiente no logo text ─────────────────────────── */
+.gradient-text {
+  background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }

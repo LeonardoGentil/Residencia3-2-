@@ -14,7 +14,34 @@ interface ChatProps {
   setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
 }
 
-export default function Chat({ provider, apiKey, modelId, conn, systemPrompt, messages, setMessages }: ChatProps) {
+function TypingIndicator() {
+  return (
+    <div className="flex items-end gap-2 animate-fade-in-up">
+      {/* avatar com glow */}
+      <div className="relative flex-shrink-0">
+        <div className="absolute inset-0 bg-blue-600 rounded-full opacity-40 blur-[5px] animate-avatar-glow" />
+        <div className="relative w-7 h-7 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center">
+          <span className="text-white text-[10px] font-black">F</span>
+        </div>
+      </div>
+      <div className="px-4 py-3 rounded-2xl rounded-tl-sm bg-slate-800/80 border border-white/6 backdrop-blur-sm flex items-center gap-1.5">
+        <div className="w-2 h-2 rounded-full bg-blue-400/70 dot-1" />
+        <div className="w-2 h-2 rounded-full bg-blue-400/70 dot-2" />
+        <div className="w-2 h-2 rounded-full bg-blue-400/70 dot-3" />
+      </div>
+    </div>
+  );
+}
+
+export default function Chat({
+  provider,
+  apiKey,
+  modelId,
+  conn,
+  systemPrompt,
+  messages,
+  setMessages,
+}: ChatProps) {
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,9 +51,17 @@ export default function Chat({ provider, apiKey, modelId, conn, systemPrompt, me
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 200;
-    if (nearBottom) el.scrollTop = el.scrollHeight;
-  }, [messages]);
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < 240) {
+      el.scrollTop = el.scrollHeight;
+    }
+  }, [messages, busy]);
+
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 136)}px`;
+  }, [input]);
 
   useEffect(() => {
     function onKey(e: globalThis.KeyboardEvent) {
@@ -50,18 +85,35 @@ export default function Chat({ provider, apiKey, modelId, conn, systemPrompt, me
 
       try {
         await runChatLoop({
-          provider, apiKey, model: modelId, conn, systemPrompt, history: messages, userInput: trimmed,
+          provider,
+          apiKey,
+          model: modelId,
+          conn,
+          systemPrompt,
+          history: messages,
+          userInput: trimmed,
           onMessage: (m) => setMessages((prev) => [...prev, m]),
           onToolCallStart: (call, msgId) => {
             setMessages((prev) =>
-              prev.map((m) => m.id === msgId ? { ...m, toolCalls: m.toolCalls?.map((tc) => (tc.id === call.id ? { ...tc } : tc)) } : m),
+              prev.map((m) =>
+                m.id === msgId
+                  ? { ...m, toolCalls: m.toolCalls?.map((tc) => (tc.id === call.id ? { ...tc } : tc)) }
+                  : m,
+              ),
             );
           },
           onToolCallEnd: (call, msgId) => {
             setMessages((prev) =>
               prev.map((m) =>
                 m.id === msgId
-                  ? { ...m, toolCalls: m.toolCalls?.map((tc) => tc.id === call.id ? { ...tc, status: call.status, result: call.result, durationMs: call.durationMs } : tc) }
+                  ? {
+                      ...m,
+                      toolCalls: m.toolCalls?.map((tc) =>
+                        tc.id === call.id
+                          ? { ...tc, status: call.status, result: call.result, durationMs: call.durationMs }
+                          : tc,
+                      ),
+                    }
                   : m,
               ),
             );
@@ -98,62 +150,72 @@ export default function Chat({ provider, apiKey, modelId, conn, systemPrompt, me
   const ready = hasApiKey && hasMcp;
   const visible = messages.filter((m) => m.role !== 'tool' && m.role !== 'system');
 
+  const placeholder = ready
+    ? 'Pergunte algo… (Enter para enviar, Shift+Enter para nova linha)'
+    : !hasMcp
+    ? 'Aguardando conexão com o MCP…'
+    : 'Cole sua chave de IA na barra lateral para começar';
+
   return (
-    <main className="flex-1 flex flex-col h-full bg-white">
-      <div ref={scrollRef} className="flex-1 overflow-y-auto chat-scroll px-6 py-4">
+    <main className="flex-1 flex flex-col h-full bg-[#020617]">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto chat-scroll px-4 py-6">
         {visible.length === 0 ? (
           <EmptyState hasApiKey={hasApiKey} hasMcp={hasMcp} onSuggestion={send} />
         ) : (
-          <div className="max-w-3xl mx-auto space-y-3">
+          <div className="max-w-3xl mx-auto space-y-4">
             {visible.map((m) => (
               <MessageBubble key={m.id} message={m} />
             ))}
-            {busy && (
-              <div className="flex justify-start">
-                <div className="bg-gray-100 px-4 py-2.5 rounded-2xl rounded-bl-sm text-sm text-gray-500 flex items-center gap-2">
-                  <svg className="w-3.5 h-3.5 text-gray-500 animate-spin-slow" viewBox="0 0 24 24" fill="none">
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeOpacity="0.25" strokeWidth="3" />
-                    <path d="M12 2 a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-                  </svg>
-                  pensando…
-                </div>
-              </div>
-            )}
+            {busy && <TypingIndicator />}
           </div>
         )}
       </div>
 
       {error && (
-        <div className="px-6 pt-2">
-          <div className="max-w-3xl mx-auto text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-            {error}
+        <div className="px-4 pb-1">
+          <div className="max-w-3xl mx-auto">
+            <div className="flex items-start gap-2 text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2.5">
+              <svg className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
+              </svg>
+              <span>{error}</span>
+            </div>
           </div>
         </div>
       )}
 
-      <div className="border-t border-gray-100 bg-white px-6 py-3">
-        <div className="max-w-3xl mx-auto flex gap-2 items-end">
-          <textarea
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKey}
-            placeholder={ready ? 'Pergunte algo… (Enter pra enviar, Shift+Enter pra quebrar linha)' : !hasMcp ? 'Aguardando conexão com o MCP…' : 'Cole sua chave de IA na barra lateral pra começar'}
-            disabled={!ready || busy}
-            rows={1}
-            className="flex-1 resize-none border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50 max-h-32"
-          />
-          <button
-            onClick={() => send(input)}
-            disabled={!ready || !input.trim() || busy}
-            className="bg-blue-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          >
-            Enviar
-          </button>
+      {/* Área de input */}
+      <div className="border-t border-white/5 bg-slate-950/80 backdrop-blur-md px-4 py-3">
+        <div className="max-w-3xl mx-auto">
+          <div className="flex items-end gap-2 bg-slate-800/70 border border-white/8 rounded-2xl px-3 py-2 transition-all focus-within:border-blue-500/50 focus-within:bg-slate-800/90 focus-within:shadow-[0_0_0_1px_rgba(59,130,246,0.2),0_0_20px_rgba(59,130,246,0.08)] backdrop-blur-sm">
+            <textarea
+              ref={inputRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKey}
+              placeholder={placeholder}
+              disabled={!ready || busy}
+              rows={1}
+              className="flex-1 resize-none bg-transparent text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none disabled:opacity-40 py-1"
+            />
+            <button
+              onClick={() => send(input)}
+              disabled={!ready || !input.trim() || busy}
+              className="btn-primary flex-shrink-0 w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-700 hover:from-blue-400 hover:to-blue-600 disabled:opacity-30 disabled:cursor-not-allowed text-white rounded-xl flex items-center justify-center transition-all shadow-md shadow-blue-900/40 hover:shadow-blue-800/50"
+              title="Enviar (Enter)"
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2z" />
+              </svg>
+            </button>
+          </div>
+          <p className="text-[10px] text-slate-700 text-center mt-1.5 select-none">
+            <kbd className="px-1 py-0.5 bg-slate-800 rounded border border-white/6 font-mono text-[9px] text-slate-600">Ctrl/⌘ K</kbd>
+            {' '}para focar &nbsp;·&nbsp;
+            <kbd className="px-1 py-0.5 bg-slate-800 rounded border border-white/6 font-mono text-[9px] text-slate-600">Shift+Enter</kbd>
+            {' '}para nova linha
+          </p>
         </div>
-        <p className="text-[10px] text-gray-400 text-center mt-1.5">
-          Pressione <kbd className="px-1 py-0.5 bg-gray-100 rounded border border-gray-200">Ctrl/⌘ K</kbd> para focar
-        </p>
       </div>
     </main>
   );

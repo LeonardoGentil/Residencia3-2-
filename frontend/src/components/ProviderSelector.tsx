@@ -39,21 +39,21 @@ export default function ProviderSelector({ providerId, modelId, apiKey, onProvid
   return (
     <div className="space-y-3">
       <div>
-        <label className="text-xs font-medium text-gray-700 block mb-1.5">Provider</label>
+        <label className="text-xs font-semibold text-slate-400 block mb-1.5">Provider</label>
         <Select
           value={providerId}
           onChange={(e) => onProviderChange(e.target.value)}
           options={PROVIDER_LIST.map((p) => ({ value: p.id, label: p.name }))}
         />
-        <p className="text-[11px] text-gray-500 mt-1">{provider.description}</p>
+        <p className="text-[11px] text-slate-600 mt-1">{provider.description}</p>
       </div>
 
       <div>
         <div className="flex items-center justify-between mb-1.5">
-          <label className="text-xs font-medium text-gray-700">Modelo</label>
-          {loadingModels && <span className="text-[10px] text-gray-400">carregando…</span>}
+          <label className="text-xs font-semibold text-slate-400">Modelo</label>
+          {loadingModels && <span className="text-[10px] text-slate-500">carregando…</span>}
           {remoteModels && !loadingModels && (
-            <span className="text-[10px] text-green-600">{remoteModels.length} disponíveis</span>
+            <span className="text-[10px] text-emerald-500">{remoteModels.length} disponíveis</span>
           )}
         </div>
         <Select
@@ -65,8 +65,8 @@ export default function ProviderSelector({ providerId, modelId, apiKey, onProvid
           }))}
         />
         {!apiKey && (
-          <p className="text-[10px] text-gray-400 mt-1">
-            Cole a chave abaixo para ver modelos reais que sua conta tem acesso.
+          <p className="text-[10px] text-slate-600 mt-1">
+            Cole a chave abaixo para ver modelos disponíveis na sua conta.
           </p>
         )}
       </div>
