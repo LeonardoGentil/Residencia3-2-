@@ -46,6 +46,11 @@ export default function Chat({
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => { abortRef.current?.abort(); };
+  }, []);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -78,6 +83,10 @@ export default function Chat({
       const trimmed = text.trim();
       if (!trimmed || busy || !conn || !apiKey) return;
 
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
       setBusy(true);
       setError(null);
       setInput('');
@@ -91,6 +100,7 @@ export default function Chat({
           systemPrompt,
           history: messages,
           userInput: trimmed,
+          signal: controller.signal,
           onMessage: (m) => setMessages((prev) => [...prev, m]),
           onToolCallStart: (call, msgId) => {
             setMessages((prev) =>
@@ -119,6 +129,8 @@ export default function Chat({
           },
         });
       } catch (e) {
+        if (e instanceof Error && e.name === 'AbortError') return;
+
         const raw = e instanceof Error ? e.message : String(e);
         const statusMatch = raw.match(/^LLM (\d+):/);
         const status = statusMatch ? Number(statusMatch[1]) : 0;

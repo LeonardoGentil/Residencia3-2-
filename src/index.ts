@@ -134,29 +134,38 @@ function createServer(): Server {
     const { name, arguments: args } = request.params;
     const input = (args ?? {}) as Record<string, unknown>;
 
-    switch (name) {
-      case 'login':
-        return login(loginSchema.parse(input));
-      case 'register':
-        return register(registerSchema.parse(input));
-      case 'list_companies':
-        return listCompanies(listCompaniesSchema.parse(input));
-      case 'get_company_services':
-        return getCompanyServices(getCompanyServicesSchema.parse(input));
-      case 'get_available_dates':
-        return getAvailableDates(getAvailableDatesSchema.parse(input));
-      case 'get_available_sessions':
-        return getAvailableSessions(getAvailableSessionsSchema.parse(input));
-      case 'get_booking_form':
-        return getBookingForm(getBookingFormSchema.parse(input));
-      case 'schedule_appointment':
-        return scheduleAppointment(scheduleAppointmentSchema.parse(input));
-      case 'check_ticket_status':
-        return checkTicketStatus(checkTicketStatusSchema.parse(input));
-      case 'list_my_tickets':
-        return listMyTickets(listMyTicketsSchema.parse(input));
-      default:
-        return { content: [{ type: 'text', text: `Tool desconhecida: ${name}` }], isError: true };
+    try {
+      switch (name) {
+        case 'login':
+          return login(loginSchema.parse(input));
+        case 'register':
+          return register(registerSchema.parse(input));
+        case 'list_companies':
+          return listCompanies(listCompaniesSchema.parse(input));
+        case 'get_company_services':
+          return getCompanyServices(getCompanyServicesSchema.parse(input));
+        case 'get_available_dates':
+          return getAvailableDates(getAvailableDatesSchema.parse(input));
+        case 'get_available_sessions':
+          return getAvailableSessions(getAvailableSessionsSchema.parse(input));
+        case 'get_booking_form':
+          return getBookingForm(getBookingFormSchema.parse(input));
+        case 'schedule_appointment':
+          return scheduleAppointment(scheduleAppointmentSchema.parse(input));
+        case 'check_ticket_status':
+          return checkTicketStatus(checkTicketStatusSchema.parse(input));
+        case 'list_my_tickets':
+          return listMyTickets(listMyTicketsSchema.parse(input));
+        default:
+          return { content: [{ type: 'text', text: `Tool desconhecida: ${name}` }], isError: true };
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      logger.error('Erro ao executar tool', { tool: name, error: message });
+      return {
+        content: [{ type: 'text', text: `Erro ao executar "${name}": ${message}` }],
+        isError: true,
+      };
     }
   });
 
@@ -207,39 +216,46 @@ async function startHttp(): Promise<void> {
   const transports = new Map<string, StreamableHTTPServerTransport>();
 
   app.all('/mcp', async (req, res) => {
-    const sessionId = req.headers['mcp-session-id'] as string | undefined;
+    try {
+      const sessionId = req.headers['mcp-session-id'] as string | undefined;
 
-    if (req.method === 'POST' && !sessionId) {
-      // New session
-      const transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: () => randomUUID(),
-      });
-      const mcpServer = createServer();
-      await mcpServer.connect(transport);
+      if (req.method === 'POST' && !sessionId) {
+        const transport = new StreamableHTTPServerTransport({
+          sessionIdGenerator: () => randomUUID(),
+        });
+        const mcpServer = createServer();
+        await mcpServer.connect(transport);
 
-      transport.onclose = () => {
-        if (transport.sessionId) transports.delete(transport.sessionId);
-      };
+        transport.onclose = () => {
+          if (transport.sessionId) transports.delete(transport.sessionId);
+        };
 
-      await transport.handleRequest(req, res, req.body);
+        await transport.handleRequest(req, res, req.body);
 
-      if (transport.sessionId) {
-        transports.set(transport.sessionId, transport);
-      }
-      return;
-    }
-
-    if (sessionId) {
-      const transport = transports.get(sessionId);
-      if (!transport) {
-        res.status(404).json({ error: 'Session not found' });
+        if (transport.sessionId) {
+          transports.set(transport.sessionId, transport);
+        }
         return;
       }
-      await transport.handleRequest(req, res, req.body);
-      return;
-    }
 
-    res.status(400).json({ error: 'Missing mcp-session-id header' });
+      if (sessionId) {
+        const transport = transports.get(sessionId);
+        if (!transport) {
+          res.status(404).json({ error: 'Session not found' });
+          return;
+        }
+        await transport.handleRequest(req, res, req.body);
+        return;
+      }
+
+      res.status(400).json({ error: 'Missing mcp-session-id header' });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      logger.error('Erro inesperado no handler /mcp', { error: message });
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Internal server error' });
+      }
+    }
   });
 
   app.get('/health', (_req, res) => {
