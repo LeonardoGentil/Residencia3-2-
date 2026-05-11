@@ -17,7 +17,11 @@ function renderInline(text: string, dark: boolean): ReactNode {
       parts.push(<strong key={k++} className="font-semibold">{m[2]}</strong>);
     else if (m[0].startsWith('`'))
       parts.push(
-        <code key={k++} className={`px-1 py-0.5 rounded text-[0.8em] font-mono ${dark ? 'bg-white/15 text-blue-100' : 'bg-white/8 text-slate-200'}`}>
+        <code key={k++} className={`px-1 py-0.5 rounded text-[0.8em] font-mono ${
+          dark
+            ? 'bg-white/15 text-blue-100'
+            : 'bg-slate-200 text-slate-700 dark:bg-white/8 dark:text-slate-200'
+        }`}>
           {m[3]}
         </code>
       );
@@ -41,7 +45,7 @@ function Markdown({ text, dark = false }: { text: string; dark?: boolean }) {
           const nl = seg.indexOf('\n');
           const code = nl >= 0 ? seg.slice(nl + 1).slice(0, -3) : seg.slice(3, -3);
           return (
-            <pre key={si} className="p-3 rounded-xl text-xs font-mono overflow-x-auto bg-[#0d1117] text-slate-300 border border-white/6">
+            <pre key={si} className="p-3 rounded-xl text-xs font-mono overflow-x-auto bg-slate-100 text-slate-700 border border-slate-200 dark:bg-[#0d1117] dark:text-slate-300 dark:border-white/6">
               {code.trimEnd()}
             </pre>
           );
@@ -124,8 +128,8 @@ function AssistantAvatar() {
 
 function UserAvatar() {
   return (
-    <div className="w-7 h-7 rounded-full bg-slate-700 border border-slate-600 flex-shrink-0 flex items-center justify-center">
-      <svg className="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="currentColor">
+    <div className="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 flex-shrink-0 flex items-center justify-center">
+      <svg className="w-4 h-4 text-slate-500 dark:text-slate-400" viewBox="0 0 24 24" fill="currentColor">
         <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
       </svg>
     </div>
@@ -152,7 +156,7 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
       <AssistantAvatar />
       <div className="max-w-[80%] space-y-2">
         {message.content && (
-          <div className="px-4 py-3 rounded-2xl rounded-tl-sm bg-slate-800/80 border border-white/6 text-slate-200 shadow-sm backdrop-blur-sm">
+          <div className="px-4 py-3 rounded-2xl rounded-tl-sm bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-white/6 text-slate-800 dark:text-slate-200 shadow-sm backdrop-blur-sm">
             <Markdown text={message.content} />
           </div>
         )}

@@ -17,14 +17,13 @@ interface ChatProps {
 function TypingIndicator() {
   return (
     <div className="flex items-end gap-2 animate-fade-in-up">
-      {/* avatar com glow */}
       <div className="relative flex-shrink-0">
         <div className="absolute inset-0 bg-blue-600 rounded-full opacity-40 blur-[5px] animate-avatar-glow" />
         <div className="relative w-7 h-7 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center">
           <span className="text-white text-[10px] font-black">F</span>
         </div>
       </div>
-      <div className="px-4 py-3 rounded-2xl rounded-tl-sm bg-slate-800/80 border border-white/6 backdrop-blur-sm flex items-center gap-1.5">
+      <div className="px-4 py-3 rounded-2xl rounded-tl-sm bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-white/6 backdrop-blur-sm flex items-center gap-1.5">
         <div className="w-2 h-2 rounded-full bg-blue-400/70 dot-1" />
         <div className="w-2 h-2 rounded-full bg-blue-400/70 dot-2" />
         <div className="w-2 h-2 rounded-full bg-blue-400/70 dot-3" />
@@ -157,7 +156,7 @@ export default function Chat({
     : 'Cole sua chave de IA na barra lateral para começar';
 
   return (
-    <main className="flex-1 flex flex-col h-full bg-[#020617]">
+    <main className="flex-1 flex flex-col h-full bg-slate-50 dark:bg-[#020617]">
       <div ref={scrollRef} className="flex-1 overflow-y-auto chat-scroll px-4 py-6">
         {visible.length === 0 ? (
           <EmptyState hasApiKey={hasApiKey} hasMcp={hasMcp} onSuggestion={send} />
@@ -174,7 +173,7 @@ export default function Chat({
       {error && (
         <div className="px-4 pb-1">
           <div className="max-w-3xl mx-auto">
-            <div className="flex items-start gap-2 text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2.5">
+            <div className="flex items-start gap-2 text-xs text-red-600 dark:text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2.5">
               <svg className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
               </svg>
@@ -185,9 +184,9 @@ export default function Chat({
       )}
 
       {/* Área de input */}
-      <div className="border-t border-white/5 bg-slate-950/80 backdrop-blur-md px-4 py-3">
+      <div className="border-t border-slate-200 dark:border-white/5 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md px-4 py-3">
         <div className="max-w-3xl mx-auto">
-          <div className="flex items-end gap-2 bg-slate-800/70 border border-white/8 rounded-2xl px-3 py-2 transition-all focus-within:border-blue-500/50 focus-within:bg-slate-800/90 focus-within:shadow-[0_0_0_1px_rgba(59,130,246,0.2),0_0_20px_rgba(59,130,246,0.08)] backdrop-blur-sm">
+          <div className="flex items-end gap-2 bg-white dark:bg-slate-800/70 border border-slate-200 dark:border-white/8 rounded-2xl px-3 py-2 transition-all focus-within:border-blue-500/50 focus-within:bg-white dark:focus-within:bg-slate-800/90 focus-within:shadow-[0_0_0_1px_rgba(59,130,246,0.2),0_0_20px_rgba(59,130,246,0.08)] backdrop-blur-sm">
             <textarea
               ref={inputRef}
               value={input}
@@ -196,7 +195,7 @@ export default function Chat({
               placeholder={placeholder}
               disabled={!ready || busy}
               rows={1}
-              className="flex-1 resize-none bg-transparent text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none disabled:opacity-40 py-1"
+              className="flex-1 resize-none bg-transparent text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:outline-none disabled:opacity-40 py-1"
             />
             <button
               onClick={() => send(input)}
@@ -209,10 +208,10 @@ export default function Chat({
               </svg>
             </button>
           </div>
-          <p className="text-[10px] text-slate-700 text-center mt-1.5 select-none">
-            <kbd className="px-1 py-0.5 bg-slate-800 rounded border border-white/6 font-mono text-[9px] text-slate-600">Ctrl/⌘ K</kbd>
+          <p className="text-[10px] text-slate-400 dark:text-slate-700 text-center mt-1.5 select-none">
+            <kbd className="px-1 py-0.5 bg-slate-100 dark:bg-slate-800 rounded border border-slate-200 dark:border-white/6 font-mono text-[9px] text-slate-500 dark:text-slate-600">Ctrl/⌘ K</kbd>
             {' '}para focar &nbsp;·&nbsp;
-            <kbd className="px-1 py-0.5 bg-slate-800 rounded border border-white/6 font-mono text-[9px] text-slate-600">Shift+Enter</kbd>
+            <kbd className="px-1 py-0.5 bg-slate-100 dark:bg-slate-800 rounded border border-slate-200 dark:border-white/6 font-mono text-[9px] text-slate-500 dark:text-slate-600">Shift+Enter</kbd>
             {' '}para nova linha
           </p>
         </div>

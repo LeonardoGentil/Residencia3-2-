@@ -1,9 +1,14 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 body {
   font-family: 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: #f8fafc;
+}
+
+html.dark body {
   background-color: #020617;
 }
 
@@ -94,14 +99,22 @@ body {
 }
 .animate-avatar-glow { animation: avatar-glow 3s ease-in-out infinite; }
 
-/* ── Scrollbar ──────────────────────────────────────── */
+/* ── Scrollbar (modo claro) ─────────────────────────── */
 .chat-scroll::-webkit-scrollbar { width: 4px; }
 .chat-scroll::-webkit-scrollbar-track { background: transparent; }
 .chat-scroll::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.07);
+  background: rgba(0, 0, 0, 0.1);
   border-radius: 10px;
 }
 .chat-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* ── Scrollbar (modo escuro) ────────────────────────── */
+html.dark .chat-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.07);
+}
+html.dark .chat-scroll::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.14);
 }
 

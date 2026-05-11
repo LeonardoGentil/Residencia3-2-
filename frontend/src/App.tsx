@@ -46,7 +46,25 @@ REGRAS ANTI-LOOP (críticas):
 
 Quando tool falhar de verdade (timeout, erro 500, auth), leia a mensagem, explique em 1 frase ao usuário e pergunte como prosseguir.`;
 
+function getInitialTheme(): boolean {
+  const stored = localStorage.getItem('theme');
+  if (stored !== null) return stored === 'dark';
+  return window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
+
 export default function App() {
+  // Tema
+  const [isDark, setIsDark] = useState<boolean>(getInitialTheme);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', isDark);
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+  }, [isDark]);
+
+  function toggleTheme() {
+    setIsDark((prev) => !prev);
+  }
+
   // Provider / modelo / chave
   const [providerId, setProviderId] = useState<string>(() => getSelectedProvider());
   const provider = getProvider(providerId);
@@ -65,8 +83,6 @@ export default function App() {
   const [authToken, setAuthTokenState] = useState<string | null>(() => getAuthToken());
   const [authEmail, setAuthEmailState] = useState<string | null>(() => getAuthEmail());
 
-  // System prompt fixo + injeção do token quando logado, pra agente não
-  // pedir login de novo dentro do chat.
   const systemPrompt = authToken
     ? `${DEFAULT_SYSTEM_PROMPT}\n\nUsuário já autenticado. E-mail: ${authEmail}. Use este Bearer token quando precisar (schedule_appointment, list_my_tickets): ${authToken}`
     : DEFAULT_SYSTEM_PROMPT;
@@ -89,7 +105,6 @@ export default function App() {
     setMessages([]);
   }
 
-  // Conecta ao MCP
   const reconnect = useCallback(async (url: string) => {
     setConnecting(true);
     setConnError(null);
@@ -104,14 +119,12 @@ export default function App() {
     }
   }, []);
 
-  // Conecta no mount e quando mudar URL
   const lastUrl = useRef(mcpUrl);
   useEffect(() => {
     void reconnect(mcpUrl);
     lastUrl.current = mcpUrl;
   }, [reconnect, mcpUrl]);
 
-  // Persiste mudanças
   function handleProviderChange(id: string) {
     setProviderId(id);
     setSelectedProvider(id);
@@ -137,7 +150,6 @@ export default function App() {
     persistMcpUrl(url);
   }
 
-  // Tela de auth aparece como gate antes do chat
   if (!authToken) {
     return (
       <AuthPage
@@ -145,6 +157,8 @@ export default function App() {
         connecting={connecting}
         connError={connError}
         onAuthenticated={handleAuthenticated}
+        isDark={isDark}
+        onToggleTheme={toggleTheme}
       />
     );
   }
@@ -155,8 +169,10 @@ export default function App() {
         connected={!!conn}
         toolCount={conn?.tools.filter((t) => t.name !== 'login' && t.name !== 'register').length ?? 0}
         authEmail={authEmail}
-onLogout={handleLogout}
+        onLogout={handleLogout}
         onSwitchAccount={handleLogout}
+        isDark={isDark}
+        onToggleTheme={toggleTheme}
       />
       <div className="flex-1 flex overflow-hidden">
         <Sidebar

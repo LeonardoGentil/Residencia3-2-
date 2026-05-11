@@ -24,14 +24,14 @@ interface SidebarProps {
 
 function SectionTitle({ children }: { children: string }) {
   return (
-    <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest mb-3">
+    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-600 uppercase tracking-widest mb-3">
       {children}
     </p>
   );
 }
 
 function Divider() {
-  return <div className="h-px bg-gradient-to-r from-transparent via-white/6 to-transparent" />;
+  return <div className="h-px bg-gradient-to-r from-transparent via-slate-200 dark:via-white/6 to-transparent" />;
 }
 
 export default function Sidebar(props: SidebarProps) {
@@ -39,8 +39,7 @@ export default function Sidebar(props: SidebarProps) {
   const visibleTools = props.conn?.tools.filter((t) => t.name !== 'login' && t.name !== 'register') ?? [];
 
   return (
-    <aside className="w-72 bg-slate-900/95 border-r border-white/5 flex flex-col h-full overflow-y-auto chat-scroll shrink-0 relative">
-      {/* Linha de gradiente vertical sutil */}
+    <aside className="w-72 bg-slate-50 dark:bg-slate-900/95 border-r border-slate-200 dark:border-white/5 flex flex-col h-full overflow-y-auto chat-scroll shrink-0 relative">
       <div className="absolute top-0 right-0 bottom-0 w-px bg-gradient-to-b from-transparent via-blue-500/10 to-transparent pointer-events-none" />
 
       <div className="p-5 space-y-5 flex-1">
@@ -86,7 +85,7 @@ export default function Sidebar(props: SidebarProps) {
                   <li
                     key={t.name}
                     title={t.description}
-                    className="flex items-center gap-2 text-xs text-slate-500 bg-white/4 border border-white/5 rounded-lg px-2.5 py-1.5 font-mono truncate hover:bg-white/6 hover:text-slate-400 transition-colors"
+                    className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-500 bg-slate-100 dark:bg-white/4 border border-slate-200 dark:border-white/5 rounded-lg px-2.5 py-1.5 font-mono truncate hover:bg-slate-200 dark:hover:bg-white/6 hover:text-slate-700 dark:hover:text-slate-400 transition-colors"
                   >
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0 shadow-[0_0_4px_rgba(16,185,129,0.5)]" />
                     {t.name}
@@ -99,7 +98,7 @@ export default function Sidebar(props: SidebarProps) {
       </div>
 
       {/* Rodapé */}
-      <div className="p-4 border-t border-white/5 space-y-2 shrink-0 bg-slate-950/40 backdrop-blur-sm">
+      <div className="p-4 border-t border-slate-200 dark:border-white/5 space-y-2 shrink-0 bg-slate-100/40 dark:bg-slate-950/40 backdrop-blur-sm">
         {props.authEmail && (
           <div className="flex items-center gap-2.5 px-2 py-1.5 mb-1">
             <div className="relative w-7 h-7 flex-shrink-0">
@@ -111,22 +110,22 @@ export default function Sidebar(props: SidebarProps) {
               </div>
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] text-slate-600 leading-tight">Logado como</p>
-              <p className="text-xs text-slate-300 font-medium truncate">{props.authEmail}</p>
+              <p className="text-[10px] text-slate-400 dark:text-slate-600 leading-tight">Logado como</p>
+              <p className="text-xs text-slate-700 dark:text-slate-300 font-medium truncate">{props.authEmail}</p>
             </div>
           </div>
         )}
 
         <button
           onClick={props.onClearChat}
-          className="w-full text-xs text-slate-500 hover:text-slate-200 border border-white/6 hover:border-white/12 hover:bg-white/5 rounded-xl py-2 transition-all font-medium"
+          className="w-full text-xs text-slate-500 dark:text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 border border-slate-200 dark:border-white/6 hover:border-slate-300 dark:hover:border-white/12 hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl py-2 transition-all font-medium"
         >
           Limpar conversa
         </button>
 
         <button
           onClick={props.onLogout}
-          className="w-full text-xs text-red-500 hover:text-red-400 border border-red-500/15 hover:border-red-500/30 hover:bg-red-500/8 rounded-xl py-2 transition-all font-medium"
+          className="w-full text-xs text-red-500 hover:text-red-600 dark:hover:text-red-400 border border-red-500/15 hover:border-red-500/30 hover:bg-red-500/8 rounded-xl py-2 transition-all font-medium"
         >
           Sair
         </button>
