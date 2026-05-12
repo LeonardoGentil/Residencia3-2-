@@ -49,6 +49,24 @@ export interface McpToolResult {
   isError?: boolean;
 }
 
+// ─── Custom Endpoints ─────────────────────────────────────────────────────────
+
+export interface CustomEndpointParam {
+  name: string;
+  type: 'string' | 'number' | 'boolean';
+  description: string;
+  required: boolean;
+}
+
+export interface CustomEndpoint {
+  id: string;
+  name: string;
+  description: string;
+  url: string;
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+  params: CustomEndpointParam[];
+}
+
 // ─── Chat ─────────────────────────────────────────────────────────────────────
 
 export type MessageRole = 'system' | 'user' | 'assistant' | 'tool';

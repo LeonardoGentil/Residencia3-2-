@@ -118,6 +118,20 @@ const TOOLS = [
     description: 'Lista todos os tickets do usuário autenticado (requer Bearer token)',
     inputSchema: zodToJsonSchema(listMyTicketsSchema),
   },
+  {
+    name: 'call_custom_endpoint',
+    description: 'Executa uma chamada HTTP para um endpoint customizado cadastrado pelo usuário no frontend',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        url: { type: 'string', description: 'URL completa do endpoint' },
+        method: { type: 'string', description: 'Método HTTP: GET, POST, PUT, PATCH ou DELETE' },
+        body: { type: 'string', description: 'Corpo JSON da requisição (opcional, para POST/PUT/PATCH)' },
+        token: { type: 'string', description: 'Bearer token de autorização (opcional)' },
+      },
+      required: ['url', 'method'],
+    },
+  },
 ];
 
 // ─── Start ────────────────────────────────────────────────────────────────────
@@ -156,6 +170,33 @@ function createServer(): Server {
           return checkTicketStatus(checkTicketStatusSchema.parse(input));
         case 'list_my_tickets':
           return listMyTickets(listMyTicketsSchema.parse(input));
+        case 'call_custom_endpoint': {
+          const { url, method, body, token } = input as {
+            url: string;
+            method: string;
+            body?: string;
+            token?: string;
+          };
+          try {
+            const headers: Record<string, string> = { Accept: 'application/json', 'Content-Type': 'application/json' };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            const res = await fetch(url, {
+              method: method.toUpperCase(),
+              headers,
+              body: body ?? undefined,
+              signal: AbortSignal.timeout(10_000),
+            });
+            const text = await res.text();
+            return {
+              content: [{ type: 'text', text: res.ok ? text : `HTTP ${res.status}: ${text}` }],
+              isError: !res.ok,
+            };
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            logger.error('Erro ao executar call_custom_endpoint', { tool: 'call_custom_endpoint', error: msg });
+            return { content: [{ type: 'text', text: msg }], isError: true };
+          }
+        }
         default:
           return { content: [{ type: 'text', text: `Tool desconhecida: ${name}` }], isError: true };
       }

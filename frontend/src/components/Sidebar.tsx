@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import ProviderSelector from './ProviderSelector';
 import ApiKeyField from './ApiKeyField';
 import McpStatus from './McpStatus';
+import AddEndpointModal from './AddEndpointModal';
 import { getProvider } from '../lib/providers';
-import type { McpConnection } from '../lib/types';
+import type { CustomEndpoint, McpConnection } from '../lib/types';
 
 interface SidebarProps {
   providerId: string;
@@ -13,6 +15,7 @@ interface SidebarProps {
   connecting: boolean;
   connError: string | null;
   authEmail: string | null;
+  customEndpoints: CustomEndpoint[];
   onProviderChange: (id: string) => void;
   onModelChange: (id: string) => void;
   onApiKeyChange: (key: string) => void;
@@ -20,6 +23,8 @@ interface SidebarProps {
   onReconnect: () => void;
   onClearChat: () => void;
   onLogout: () => void;
+  onAddEndpoint: (ep: CustomEndpoint) => void;
+  onRemoveEndpoint: (id: string) => void;
 }
 
 function SectionTitle({ children }: { children: string }) {
@@ -36,9 +41,19 @@ function Divider() {
 
 export default function Sidebar(props: SidebarProps) {
   const provider = getProvider(props.providerId);
-  const visibleTools = props.conn?.tools.filter((t) => t.name !== 'login' && t.name !== 'register') ?? [];
+  const visibleTools = props.conn?.tools.filter(
+    (t) => t.name !== 'login' && t.name !== 'register' && t.name !== 'call_custom_endpoint',
+  ) ?? [];
+  const [showModal, setShowModal] = useState(false);
 
   return (
+    <>
+    {showModal && (
+      <AddEndpointModal
+        onSave={(ep) => { props.onAddEndpoint(ep); setShowModal(false); }}
+        onClose={() => setShowModal(false)}
+      />
+    )}
     <aside className="w-72 bg-slate-50 dark:bg-slate-900/95 border-r border-slate-200 dark:border-white/5 flex flex-col h-full overflow-y-auto chat-scroll shrink-0 relative">
       <div className="absolute top-0 right-0 bottom-0 w-px bg-gradient-to-b from-transparent via-blue-500/10 to-transparent pointer-events-none" />
 
@@ -75,11 +90,25 @@ export default function Sidebar(props: SidebarProps) {
           providerName={provider.name}
         />
 
-        {visibleTools.length > 0 && (
+        {(visibleTools.length > 0 || props.customEndpoints.length > 0) && (
           <>
             <Divider />
             <section>
-              <SectionTitle>Tools disponíveis</SectionTitle>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-600 uppercase tracking-widest">
+                  Tools disponíveis
+                </p>
+                <button
+                  onClick={() => setShowModal(true)}
+                  title="Cadastrar endpoint customizado"
+                  className="flex items-center gap-1 text-[10px] text-blue-500 hover:text-blue-400 font-medium transition-colors"
+                >
+                  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                  Adicionar
+                </button>
+              </div>
               <ul className="space-y-1">
                 {visibleTools.map((t) => (
                   <li
@@ -91,7 +120,49 @@ export default function Sidebar(props: SidebarProps) {
                     {t.name}
                   </li>
                 ))}
+                {props.customEndpoints.map((ep) => (
+                  <li
+                    key={ep.id}
+                    title={ep.description || ep.url}
+                    className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-500 bg-slate-100 dark:bg-white/4 border border-slate-200 dark:border-white/5 rounded-lg px-2.5 py-1.5 font-mono hover:bg-slate-200 dark:hover:bg-white/6 hover:text-slate-700 dark:hover:text-slate-400 transition-colors group"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-violet-500 flex-shrink-0 shadow-[0_0_4px_rgba(139,92,246,0.5)]" />
+                    <span className="truncate flex-1">{ep.name}</span>
+                    <button
+                      onClick={() => props.onRemoveEndpoint(ep.id)}
+                      title="Remover endpoint"
+                      className="opacity-0 group-hover:opacity-100 ml-auto text-slate-400 hover:text-red-400 transition-all"
+                    >
+                      <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M18 6 6 18M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </li>
+                ))}
               </ul>
+            </section>
+          </>
+        )}
+
+        {visibleTools.length === 0 && props.customEndpoints.length === 0 && (
+          <>
+            <Divider />
+            <section>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-600 uppercase tracking-widest">
+                  Tools disponíveis
+                </p>
+                <button
+                  onClick={() => setShowModal(true)}
+                  title="Cadastrar endpoint customizado"
+                  className="flex items-center gap-1 text-[10px] text-blue-500 hover:text-blue-400 font-medium transition-colors"
+                >
+                  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                  Adicionar
+                </button>
+              </div>
             </section>
           </>
         )}
@@ -131,5 +202,6 @@ export default function Sidebar(props: SidebarProps) {
         </button>
       </div>
     </aside>
+    </>
   );
 }
