@@ -18,8 +18,10 @@ import {
   setAuthToken,
   getAuthEmail,
   setAuthEmail,
+  getCustomEndpoints,
+  setCustomEndpoints,
 } from './lib/storage';
-import type { ChatMessage, McpConnection } from './lib/types';
+import type { ChatMessage, CustomEndpoint, McpConnection } from './lib/types';
 
 const DEFAULT_SYSTEM_PROMPT = `Você é um assistente da Filazero, plataforma brasileira que elimina filas presenciais.
 
@@ -86,6 +88,25 @@ export default function App() {
   const systemPrompt = authToken
     ? `${DEFAULT_SYSTEM_PROMPT}\n\nUsuário já autenticado. E-mail: ${authEmail}. Use este Bearer token quando precisar (schedule_appointment, list_my_tickets): ${authToken}`
     : DEFAULT_SYSTEM_PROMPT;
+
+  // Custom endpoints
+  const [customEndpoints, setCustomEndpointsState] = useState<CustomEndpoint[]>(() => getCustomEndpoints());
+
+  function handleAddEndpoint(ep: CustomEndpoint) {
+    setCustomEndpointsState((prev) => {
+      const updated = [...prev, ep];
+      setCustomEndpoints(updated);
+      return updated;
+    });
+  }
+
+  function handleRemoveEndpoint(id: string) {
+    setCustomEndpointsState((prev) => {
+      const updated = prev.filter((e) => e.id !== id);
+      setCustomEndpoints(updated);
+      return updated;
+    });
+  }
 
   // Chat
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -184,6 +205,7 @@ export default function App() {
           connecting={connecting}
           connError={connError}
           authEmail={authEmail}
+          customEndpoints={customEndpoints}
           onProviderChange={handleProviderChange}
           onModelChange={handleModelChange}
           onApiKeyChange={handleApiKeyChange}
@@ -191,6 +213,8 @@ export default function App() {
           onReconnect={() => reconnect(mcpUrl)}
           onClearChat={() => setMessages([])}
           onLogout={handleLogout}
+          onAddEndpoint={handleAddEndpoint}
+          onRemoveEndpoint={handleRemoveEndpoint}
         />
         <Chat
           provider={provider}
@@ -200,6 +224,7 @@ export default function App() {
           systemPrompt={systemPrompt}
           messages={messages}
           setMessages={setMessages}
+          customEndpoints={customEndpoints}
         />
       </div>
     </div>

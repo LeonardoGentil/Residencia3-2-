@@ -1,3 +1,5 @@
+import type { CustomEndpoint } from './types';
+
 const PREFIX = 'filazero_mcp_';
 
 function key(k: string): string {
@@ -81,4 +83,17 @@ export function getAuthEmail(): string | null {
 export function setAuthEmail(email: string | null): void {
   if (email) storage.set('auth_email', email);
   else storage.remove('auth_email');
+}
+
+// ── Custom Endpoints ──────────────────────────────────────────────────────────
+
+export function getCustomEndpoints(): CustomEndpoint[] {
+  const raw = storage.get('custom_endpoints');
+  if (!raw) return [];
+  try { return JSON.parse(raw) as CustomEndpoint[]; }
+  catch { return []; }
+}
+
+export function setCustomEndpoints(endpoints: CustomEndpoint[]): void {
+  storage.set('custom_endpoints', JSON.stringify(endpoints));
 }

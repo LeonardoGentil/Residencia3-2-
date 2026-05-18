@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback, type KeyboardEvent } from 'react';
-import type { ChatMessage, McpConnection, Provider } from '../lib/types';
+import type { ChatMessage, CustomEndpoint, McpConnection, Provider } from '../lib/types';
 import MessageBubble from './MessageBubble';
 import EmptyState from './EmptyState';
 import { runChatLoop } from '../lib/chatLoop';
@@ -12,6 +12,7 @@ interface ChatProps {
   systemPrompt: string;
   messages: ChatMessage[];
   setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
+  customEndpoints?: CustomEndpoint[];
 }
 
 function TypingIndicator() {
@@ -40,6 +41,7 @@ export default function Chat({
   systemPrompt,
   messages,
   setMessages,
+  customEndpoints,
 }: ChatProps) {
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
@@ -101,6 +103,7 @@ export default function Chat({
           history: messages,
           userInput: trimmed,
           signal: controller.signal,
+          customEndpoints,
           onMessage: (m) => setMessages((prev) => [...prev, m]),
           onToolCallStart: (call, msgId) => {
             setMessages((prev) =>
@@ -146,7 +149,7 @@ export default function Chat({
         setBusy(false);
       }
     },
-    [provider, apiKey, modelId, conn, systemPrompt, messages, setMessages, busy],
+    [provider, apiKey, modelId, conn, systemPrompt, messages, setMessages, busy, customEndpoints],
   );
 
   function handleKey(e: KeyboardEvent<HTMLTextAreaElement>) {

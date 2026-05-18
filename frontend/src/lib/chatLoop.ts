@@ -2,7 +2,10 @@ import { callTool } from './mcpClient';
 import { chat, mcpToolsToOpenAI } from './llmClient';
 import type {
   ChatMessage,
+  CustomEndpoint,
   McpConnection,
+  McpToolResult,
+  OpenAITool,
   OpenAIToolCall,
   Provider,
   ToolCall,
@@ -86,9 +89,29 @@ export interface ChatLoopOptions {
   history: ChatMessage[];
   userInput: string;
   signal?: AbortSignal;
+  customEndpoints?: CustomEndpoint[];
   onMessage: (msg: ChatMessage) => void;
   onToolCallStart: (call: ToolCall, messageId: string) => void;
   onToolCallEnd: (call: ToolCall, messageId: string) => void;
+}
+
+function customEndpointsToOpenAI(endpoints: CustomEndpoint[]): OpenAITool[] {
+  return endpoints.map((ep) => {
+    const properties: Record<string, unknown> = {};
+    const required: string[] = [];
+    for (const p of ep.params) {
+      properties[p.name] = { type: p.type, description: p.description };
+      if (p.required) required.push(p.name);
+    }
+    return {
+      type: 'function',
+      function: {
+        name: ep.name,
+        description: ep.description || `Chama ${ep.method} ${ep.url}`,
+        parameters: { type: 'object', properties, required },
+      },
+    } satisfies OpenAITool;
+  });
 }
 
 function makeId(prefix: string): string {
@@ -153,7 +176,9 @@ export async function runChatLoop(opts: ChatLoopOptions): Promise<void> {
   // Sanitize → remove órfãos de tool_call. Trim → limita tokens.
   const internalHistory: ChatMessage[] = [...trimHistory(sanitizeHistory(history)), userMsg];
 
-  const tools = mcpToolsToOpenAI(conn.tools.filter((t) => t.name !== 'login' && t.name !== 'register'));
+  const hiddenMcpTools = new Set(['login', 'register', 'call_custom_endpoint']);
+  const mcpTools = mcpToolsToOpenAI(conn.tools.filter((t) => !hiddenMcpTools.has(t.name)));
+  const tools = [...mcpTools, ...customEndpointsToOpenAI(opts.customEndpoints ?? [])];
 
   // Histórico das últimas tool calls pra detectar loop
   const recentToolCalls: string[] = [];
@@ -260,7 +285,31 @@ export async function runChatLoop(opts: ChatLoopOptions): Promise<void> {
       opts.onToolCallStart(tc, assistantMsgId);
       const start = Date.now();
       try {
-        const result = await callTool(conn, tc.name, tc.args);
+        const customEp = opts.customEndpoints?.find((e) => e.name === tc.name);
+        let result: McpToolResult;
+
+        if (customEp) {
+          // Monta a chamada via tool proxy call_custom_endpoint no servidor MCP
+          const { token, ...restArgs } = tc.args as Record<string, unknown> & { token?: string };
+          let callUrl = customEp.url;
+          let body: string | undefined;
+          if (customEp.method === 'GET' || customEp.method === 'DELETE') {
+            const qs = new URLSearchParams(
+              Object.fromEntries(Object.entries(restArgs).map(([k, v]) => [k, String(v)])),
+            ).toString();
+            if (qs) callUrl = `${callUrl}${callUrl.includes('?') ? '&' : '?'}${qs}`;
+          } else {
+            body = JSON.stringify(restArgs);
+          }
+          result = await callTool(conn, 'call_custom_endpoint', {
+            url: callUrl,
+            method: customEp.method,
+            ...(body !== undefined ? { body } : {}),
+            ...(token !== undefined ? { token } : {}),
+          });
+        } else {
+          result = await callTool(conn, tc.name, tc.args);
+        }
         const fullText = result.content
           .map((c) => c.text ?? '')
           .filter(Boolean)
